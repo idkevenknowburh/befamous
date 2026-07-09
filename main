@@ -12,6 +12,15 @@ local TweenService = game:GetService("TweenService")
 local LocalPlayer = Players.LocalPlayer
 
 -- ============================================================================
+--  DUPLICATE PREVENTION — destroy old GUI if re-executed
+-- ============================================================================
+local CoreGui = game:GetService("CoreGui")
+local oldGui = CoreGui:FindFirstChild("NexusMetricsUI")
+if oldGui then
+    oldGui:Destroy()
+end
+
+-- ============================================================================
 --  REMOTE LOCATOR
 -- ============================================================================
 local RemotesFolder = ReplicatedStorage:FindFirstChild("Utilities")
@@ -68,13 +77,47 @@ end
 --  FOLLOWER COUNTER READER
 -- ============================================================================
 local function getFollowers()
-    local ok, result = pcall(function()
+    -- Method 1: leaderstats.Followers (most reliable)
+    local ok, val = pcall(function()
+        local ls = LocalPlayer:FindFirstChild("leaderstats")
+        if ls then
+            local fol = ls:FindFirstChild("Followers")
+            if fol then
+                return tonumber(fol.Value) or 0
+            end
+        end
+        return nil
+    end)
+    if ok and val then return val end
+
+    -- Method 2: fallback — scan leaderstats children for anything with "Followers" in the name
+    local ok2, val2 = pcall(function()
+        local ls = LocalPlayer:FindFirstChild("leaderstats")
+        if ls then
+            for _, child in ipairs(ls:GetChildren()) do
+                if child.Name:lower():find("follower") then
+                    local v = tonumber(child.Value) or 0
+                    if v > 0 then return v end
+                end
+            end
+        end
+        return nil
+    end)
+    if ok2 and val2 then return val2 end
+
+    -- Method 3: last resort — try the old hard-coded path but use .Value not .Text
+    local ok3, result = pcall(function()
         return game:GetChildren()[17]:GetChildren()[1]:GetChildren()[4]:GetChildren()[1]
     end)
-    if ok and result and result.Text then
-        local num = result.Text:gsub("[^%d]", "")
-        return tonumber(num) or 0
+    if ok3 and result then
+        local num = nil
+        pcall(function() num = tonumber(result.Value) end)
+        if not num then
+            pcall(function() num = tonumber(result.Text:gsub("[^%d]", "")) end)
+        end
+        return num or 0
     end
+
     return 0
 end
 
@@ -212,7 +255,7 @@ local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "NexusMetricsUI"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.DisplayOrder = 999
-ScreenGui.Parent = game:GetService("CoreGui")
+ScreenGui.Parent = CoreGui
 
 -- ============================================================================
 --  TOGGLE BUTTON (minimized state)
@@ -410,6 +453,7 @@ local function createTabButton(name, label, order)
         Parent = TabContainer,
     })
     new("UICorner", { CornerRadius = UDim.new(0, 6) }, btn)
+    new("UIPadding", { PaddingLeft = UDim.new(0, 10) }, btn)
 
     local indicator = new("Frame", {
         Size = UDim2.new(0, 3, 0.6, 0),
