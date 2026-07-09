@@ -417,16 +417,26 @@ local function startAutofarm()
         while _G.AutofarmEnabled do
             if ClickRemote then
                 local ok, err = pcall(function()
-                    -- Print remote info only first 3 clicks, then every 20th
                     if clickCount < 3 or clickCount % 20 == 0 then
-                        print("[BEFAMOUS] ClickRemote -- Class:", ClickRemote.ClassName, "| Name:", ClickRemote.Name, "| Parent:", ClickRemote.Parent and ClickRemote.Parent.Name or "nil", "| click #", clickCount)
+                        print("[BEFAMOUS] ClickRemote -- Class:", ClickRemote.ClassName, "| Name:", ClickRemote.Name, "| click #", clickCount)
                     end
                     if ClickRemote:IsA("RemoteEvent") then
-                        ClickRemote:FireServer()
+                        -- Try no args first, then with LocalPlayer
+                        if clickCount == 0 then
+                            ClickRemote:FireServer()
+                        else
+                            ClickRemote:FireServer(LocalPlayer)
+                        end
                         clickCount = clickCount + 1
                     elseif ClickRemote:IsA("RemoteFunction") then
                         task.spawn(function()
-                            local ok2, ret = pcall(function() return ClickRemote:InvokeServer() end)
+                            local ok2, ret = pcall(function()
+                                if clickCount < 2 then
+                                    return ClickRemote:InvokeServer()
+                                else
+                                    return ClickRemote:InvokeServer(LocalPlayer)
+                                end
+                            end)
                             if not ok2 or clickCount < 5 then
                                 print("[BEFAMOUS] InvokeServer -- ok:", ok2, "| return:", tostring(ret))
                             end
