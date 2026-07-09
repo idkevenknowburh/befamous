@@ -95,12 +95,14 @@ local ScreenGui = new("ScreenGui", {
     DisplayOrder = 999,
 })
 
+-- Always parent to PlayerGui for reliable rendering via loadstring
+ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+ScreenGui.Enabled = true
+ScreenGui.IgnoreGuiInset = true
+
+-- Optional: protect if exploit supports it
 if syn and syn.protect_gui then
-    syn.protect_gui(ScreenGui)
-elseif gethui then
-    ScreenGui.Parent = gethui()
-else
-    ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+    pcall(function() syn.protect_gui(ScreenGui) end)
 end
 
 -- ============================================================================
