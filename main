@@ -1,9 +1,7 @@
 -- ============================================================================
---  NEXUS METRICS v2 — Premium UI Redesign
+--  Be Famous Script — Smart Autoclicker + Auto Spin
 --  Credits: madeonice
 -- ============================================================================
-
-print("[1/20] Script started")
 
 -- Services
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -13,9 +11,18 @@ local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local LocalPlayer = Players.LocalPlayer
 
-print("[2/20] Services loaded — Player:", LocalPlayer.Name)
+-- ============================================================================
+--  DUPLICATE PREVENTION — destroy old GUI if re-executed
+-- ============================================================================
+local CoreGui = game:GetService("CoreGui")
+local oldGui = CoreGui:FindFirstChild("NexusMetricsUI")
+if oldGui then
+    oldGui:Destroy()
+end
 
--- Dynamic Remote Network Locator
+-- ============================================================================
+--  REMOTE LOCATOR
+-- ============================================================================
 local RemotesFolder = ReplicatedStorage:FindFirstChild("Utilities")
     and ReplicatedStorage.Utilities:FindFirstChild("Network")
     and ReplicatedStorage.Utilities.Network:FindFirstChild("Remotes")
@@ -25,74 +32,78 @@ local SpinRemote = nil
 
 if RemotesFolder then
     local children = RemotesFolder:GetChildren()
+
+    -- Find Click remote
     ClickRemote = children[2]
-    SpinRemote = children[58]
     if not ClickRemote or (ClickRemote.Name ~= "Click" and #children >= 2) then
         for _, child in ipairs(children) do
             if child.Name == "Click" then ClickRemote = child break end
         end
     end
+
+    -- Find Spin remote
+    SpinRemote = children[58]
     if not SpinRemote or (SpinRemote.Name ~= "Spin" and #children >= 58) then
         for _, child in ipairs(children) do
             if child.Name == "Spin" then SpinRemote = child break end
         end
     end
+
 end
 
+print("[BEFAMOUS] Click remote:", ClickRemote and ClickRemote.Name or "NOT FOUND")
+print("[BEFAMOUS] Spin remote:", SpinRemote and SpinRemote.Name or "NOT FOUND")
+
+-- Global State
 _G.AutofarmEnabled = false
 _G.AutoSpinEnabled = false
 
-print("[3/20] Remotes found — Click:", tostring(ClickRemote ~= nil), "Spin:", tostring(SpinRemote ~= nil))
+-- ============================================================================
+--  TWEENS
+-- ============================================================================
+local OPEN_TWEEN  = TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+local CLOSE_TWEEN = TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
+local FAST_TWEEN  = TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+local TOGGLE_POP  = TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
 
 -- ============================================================================
---  TWEEN PRESETS
--- ============================================================================
-local OPEN_TWEEN  = TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
-local CLOSE_TWEEN = TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
-local FAST_TWEEN  = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-local TOGGLE_POP  = TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
-
--- ============================================================================
---  COLOR PALETTE
+--  COLOR PALETTE — Flat Dark Mode
 -- ============================================================================
 local C = {
-    BG_DARK       = Color3.fromRGB(10, 10, 16),
-    BG_PANEL      = Color3.fromRGB(16, 17, 24),
-    BG_SIDEBAR    = Color3.fromRGB(12, 13, 19),
-    BG_CARD       = Color3.fromRGB(22, 24, 34),
-    BG_CARD_HOVER = Color3.fromRGB(28, 30, 44),
-    BG_TOPBAR     = Color3.fromRGB(20, 21, 30),
-    BORDER        = Color3.fromRGB(35, 38, 55),
-    ACCENT        = Color3.fromRGB(120, 80, 255),
-    ACCENT_DIM    = Color3.fromRGB(80, 55, 180),
-    ACCENT_GLOW   = Color3.fromRGB(160, 120, 255),
-    TEXT_WHITE     = Color3.fromRGB(245, 245, 250),
-    TEXT_DIM       = Color3.fromRGB(140, 145, 170),
-    TEXT_MUTED     = Color3.fromRGB(90, 94, 115),
-    GREEN          = Color3.fromRGB(80, 200, 120),
-    RED            = Color3.fromRGB(220, 65, 65),
-    RED_DIM        = Color3.fromRGB(140, 40, 40),
-    TAB_ACTIVE_BG  = Color3.fromRGB(120, 80, 255),
-    TAB_INACTIVE   = Color3.fromRGB(22, 24, 34),
+    BG_MAIN       = Color3.fromRGB(18, 18, 18),
+    BG_SIDEBAR    = Color3.fromRGB(24, 24, 24),
+    BG_CONTENT    = Color3.fromRGB(30, 30, 30),
+    BG_TOPBAR     = Color3.fromRGB(20, 20, 20),
+    BG_CARD       = Color3.fromRGB(38, 38, 38),
+    BG_CARD_HOVER = Color3.fromRGB(48, 48, 48),
+    BG_STAT       = Color3.fromRGB(24, 24, 24),
+    BORDER        = Color3.fromRGB(40, 40, 40),
+    BORDER_LIGHT  = Color3.fromRGB(50, 50, 50),
+    ACCENT        = Color3.fromRGB(76, 175, 80),
+    ACCENT_DIM    = Color3.fromRGB(56, 130, 60),
+    ACCENT_BLUE   = Color3.fromRGB(66, 133, 244),
+    TEXT_WHITE     = Color3.fromRGB(240, 240, 240),
+    TEXT_PRIMARY   = Color3.fromRGB(220, 220, 220),
+    TEXT_SECONDARY = Color3.fromRGB(160, 160, 160),
+    TEXT_MUTED     = Color3.fromRGB(100, 100, 100),
+    TOGGLE_OFF    = Color3.fromRGB(60, 60, 60),
+    TOGGLE_KNOB   = Color3.fromRGB(255, 255, 255),
+    CLOSE_RED     = Color3.fromRGB(200, 60, 60),
+    TAB_HOVER     = Color3.fromRGB(35, 35, 35),
+    TAB_ACTIVE    = Color3.fromRGB(40, 40, 40),
 }
 
-print("[4/20] Colors & tweens defined")
-
 -- ============================================================================
---  UTILITY: Quick Instance Creator
+--  UTILITY
 -- ============================================================================
 local function new(class, props, parent)
     local inst = Instance.new(class)
     for k, v in pairs(props or {}) do
-        if k ~= "Parent" then
-            pcall(function() inst[k] = v end)
-        end
+        pcall(function() inst[k] = v end)
     end
     if parent then inst.Parent = parent end
     return inst
 end
-
-print("[5/20] Helper function defined")
 
 -- ============================================================================
 --  SCREEN GUI
@@ -101,20 +112,18 @@ local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "NexusMetricsUI"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.DisplayOrder = 999
-ScreenGui.Parent = game:GetService("CoreGui")
-
-print("[6/20] ScreenGui created and parented to CoreGui — children:", #ScreenGui:GetChildren())
+ScreenGui.Parent = CoreGui
 
 -- ============================================================================
---  MINIMIZE / OPEN TOGGLE BUTTON
+--  TOGGLE BUTTON (minimized state)
 -- ============================================================================
-local savedPosition = UDim2.new(0.5, -210, 0.5, -155)
+local savedPosition = UDim2.new(0.5, -230, 0.5, -160)
 
 local ToggleBtn = new("TextButton", {
     Name = "OpenToggle",
-    Size = UDim2.new(0, 48, 0, 48),
-    Position = UDim2.new(0.5, -24, 0.5, -24),
-    BackgroundColor3 = C.ACCENT,
+    Size = UDim2.new(0, 42, 0, 42),
+    Position = UDim2.new(0.5, -21, 0.5, -21),
+    BackgroundColor3 = C.BG_CONTENT,
     BorderSizePixel = 0,
     Text = "",
     AutoButtonColor = false,
@@ -122,32 +131,13 @@ local ToggleBtn = new("TextButton", {
     Parent = ScreenGui,
 })
 
-new("UICorner", { CornerRadius = UDim.new(0, 14) }, ToggleBtn)
-new("UIStroke", { Thickness = 1.5, Color = C.ACCENT_GLOW, Transparency = 0.4 }, ToggleBtn)
+new("UICorner", { CornerRadius = UDim.new(0, 10) }, ToggleBtn)
+new("UIStroke", { Thickness = 1, Color = C.BORDER_LIGHT }, ToggleBtn)
 
--- Custom icon
-local IconBg = new("Frame", {
-    Size = UDim2.new(0, 20, 0, 20),
-    Position = UDim2.new(0.5, -10, 0.5, -10),
-    BackgroundTransparency = 1,
-    Parent = ToggleBtn,
-})
-
-new("Frame", { Size = UDim2.new(0, 14, 0, 2.5), Position = UDim2.new(0, 2, 0, 3), Rotation = -45, BackgroundColor3 = C.TEXT_WHITE, BorderSizePixel = 0, Parent = IconBg })
-new("Frame", { Size = UDim2.new(0, 14, 0, 2.5), Position = UDim2.new(0, 4, 0, 3), Rotation = 45, BackgroundColor3 = C.TEXT_WHITE, BorderSizePixel = 0, Parent = IconBg })
-new("Frame", { Size = UDim2.new(0, 14, 0, 2.5), Position = UDim2.new(0, 2, 0, 14), Rotation = 45, BackgroundColor3 = C.TEXT_WHITE, BorderSizePixel = 0, Parent = IconBg })
-new("Frame", { Size = UDim2.new(0, 14, 0, 2.5), Position = UDim2.new(0, 4, 0, 14), Rotation = -45, BackgroundColor3 = C.TEXT_WHITE, BorderSizePixel = 0, Parent = IconBg })
-
--- Toggle glow
-local ToggleGlow = new("Frame", {
-    Size = UDim2.new(1, 12, 1, 12),
-    Position = UDim2.new(0, -6, 0, -6),
-    BackgroundColor3 = C.ACCENT,
-    BackgroundTransparency = 0.7,
-    BorderSizePixel = 0,
-    Parent = ToggleBtn,
-})
-new("UICorner", { CornerRadius = UDim.new(0, 18) }, ToggleGlow)
+-- Hamburger icon
+new("Frame", { Size = UDim2.new(0, 16, 0, 1.5), Position = UDim2.new(0.5, -8, 0.35, 0), BackgroundColor3 = C.TEXT_PRIMARY, BorderSizePixel = 0, Parent = ToggleBtn })
+new("Frame", { Size = UDim2.new(0, 16, 0, 1.5), Position = UDim2.new(0.5, -8, 0.5, -0.75), BackgroundColor3 = C.TEXT_PRIMARY, BorderSizePixel = 0, Parent = ToggleBtn })
+new("Frame", { Size = UDim2.new(0, 16, 0, 1.5), Position = UDim2.new(0.5, -8, 0.65, -1.5), BackgroundColor3 = C.TEXT_PRIMARY, BorderSizePixel = 0, Parent = ToggleBtn })
 
 -- Toggle drag
 local toggleDragging, toggleDragStart, toggleStartPos
@@ -171,51 +161,35 @@ ToggleBtn.InputChanged:Connect(function(input)
     end
 end)
 
-print("[7/20] Toggle button created — ScreenGui children:", #ScreenGui:GetChildren())
-
 -- ============================================================================
 --  MAIN FRAME
 -- ============================================================================
 local MainFrame = new("Frame", {
     Name = "MainFrame",
-    Size = UDim2.new(0, 440, 0, 310),
-    Position = UDim2.new(0.5, -220, 0.5, -155),
-    BackgroundColor3 = C.BG_PANEL,
+    Size = UDim2.new(0, 460, 0, 280),
+    Position = UDim2.new(0.5, -230, 0.5, -140),
+    BackgroundColor3 = C.BG_MAIN,
     BorderSizePixel = 0,
     ClipsDescendants = true,
     Parent = ScreenGui,
 })
 
-print("[8/20] MainFrame created — exists:", tostring(MainFrame ~= nil), "parent:", tostring(MainFrame.Parent))
-
-new("UICorner", { CornerRadius = UDim.new(0, 14) }, MainFrame)
+new("UICorner", { CornerRadius = UDim.new(0, 8) }, MainFrame)
 new("UIStroke", { Thickness = 1, Color = C.BORDER }, MainFrame)
-
--- Top accent line
-new("Frame", {
-    Size = UDim2.new(0.35, 0, 0, 2),
-    Position = UDim2.new(0.325, 0, 0, 0),
-    BackgroundColor3 = C.ACCENT,
-    BorderSizePixel = 0,
-    ZIndex = 5,
-    Parent = MainFrame,
-})
-
-print("[9/20] MainFrame styled — children:", #MainFrame:GetChildren())
 
 -- ============================================================================
 --  TOP BAR
 -- ============================================================================
 local TopBar = new("Frame", {
     Name = "TopBar",
-    Size = UDim2.new(1, 0, 0, 48),
+    Size = UDim2.new(1, 0, 0, 36),
     BackgroundColor3 = C.BG_TOPBAR,
     BorderSizePixel = 0,
     ZIndex = 2,
     Parent = MainFrame,
 })
 
-local TopBarCorner = new("Frame", {
+local TopBarClip = new("Frame", {
     Size = UDim2.new(1, 0, 1, 0),
     BackgroundColor3 = C.BG_TOPBAR,
     BorderSizePixel = 0,
@@ -223,68 +197,74 @@ local TopBarCorner = new("Frame", {
     ZIndex = 1,
     Parent = TopBar,
 })
-new("UICorner", { CornerRadius = UDim.new(0, 14) }, TopBarCorner)
+new("UICorner", { CornerRadius = UDim.new(0, 8) }, TopBarClip)
 
 new("Frame", {
-    Size = UDim2.new(1, 0, 0, 12),
-    Position = UDim2.new(0, 0, 1, -12),
+    Size = UDim2.new(1, 0, 0, 8),
+    Position = UDim2.new(0, 0, 1, -8),
     BackgroundColor3 = C.BG_TOPBAR,
     BorderSizePixel = 0,
     ZIndex = 1,
     Parent = TopBar,
 })
 
-new("TextLabel", {
-    Size = UDim2.new(1, -80, 1, 0),
-    Position = UDim2.new(0, 18, 0, 0),
-    BackgroundTransparency = 1,
-    Text = "NEXUS METRICS",
-    TextColor3 = C.TEXT_WHITE,
-    TextSize = 15,
-    Font = Enum.Font.GothamBold,
-    TextXAlignment = Enum.TextXAlignment.Left,
+new("Frame", {
+    Size = UDim2.new(1, 0, 0, 1),
+    Position = UDim2.new(0, 0, 1, -1),
+    BackgroundColor3 = C.BORDER,
+    BorderSizePixel = 0,
     ZIndex = 3,
     Parent = TopBar,
 })
 
-print("[10/20] TopBar done")
-
--- Close button
-local CloseBtn = new("TextButton", {
-    Name = "CloseBtn",
-    Size = UDim2.new(0, 32, 0, 32),
-    Position = UDim2.new(1, -42, 0.5, -16),
-    BackgroundColor3 = Color3.fromRGB(200, 55, 55),
-    BorderSizePixel = 0,
-    Text = "",
-    AutoButtonColor = false,
+new("TextLabel", {
+    Size = UDim2.new(1, -80, 1, 0),
+    Position = UDim2.new(0, 14, 0, 0),
+    BackgroundTransparency = 1,
+    Text = "Be Famous Script \xF0\x9F\x93\xB1",
+    TextColor3 = C.TEXT_WHITE,
+    TextSize = 13,
+    Font = Enum.Font.GothamBold,
+    TextXAlignment = Enum.TextXAlignment.Left,
     ZIndex = 4,
     Parent = TopBar,
 })
-new("UICorner", { CornerRadius = UDim.new(0, 8) }, CloseBtn)
 
-new("Frame", { Size = UDim2.new(0, 14, 0, 2), Position = UDim2.new(0.5, -7, 0.5, -1), Rotation = 45, BackgroundColor3 = C.TEXT_WHITE, BorderSizePixel = 0, ZIndex = 5, Parent = CloseBtn })
-new("Frame", { Size = UDim2.new(0, 14, 0, 2), Position = UDim2.new(0.5, -7, 0.5, -1), Rotation = -45, BackgroundColor3 = C.TEXT_WHITE, BorderSizePixel = 0, ZIndex = 5, Parent = CloseBtn })
+-- Close button
+local CloseBtn = new("TextButton", {
+    Size = UDim2.new(0, 28, 0, 28),
+    Position = UDim2.new(1, -34, 0.5, -14),
+    BackgroundColor3 = Color3.fromRGB(0, 0, 0),
+    BackgroundTransparency = 1,
+    BorderSizePixel = 0,
+    Text = "",
+    AutoButtonColor = false,
+    ZIndex = 5,
+    Parent = TopBar,
+})
+
+local CloseX1 = new("Frame", { Size = UDim2.new(0, 10, 0, 1.5), Position = UDim2.new(0.5, -5, 0.5, -0.75), Rotation = 45, BackgroundColor3 = C.TEXT_SECONDARY, BorderSizePixel = 0, ZIndex = 6, Parent = CloseBtn })
+local CloseX2 = new("Frame", { Size = UDim2.new(0, 10, 0, 1.5), Position = UDim2.new(0.5, -5, 0.5, -0.75), Rotation = -45, BackgroundColor3 = C.TEXT_SECONDARY, BorderSizePixel = 0, ZIndex = 6, Parent = CloseBtn })
 
 CloseBtn.MouseEnter:Connect(function()
-    TweenService:Create(CloseBtn, FAST_TWEEN, { BackgroundColor3 = Color3.fromRGB(240, 70, 70) }):Play()
+    CloseBtn.BackgroundTransparency = 0.5
+    TweenService:Create(CloseX1, FAST_TWEEN, { BackgroundColor3 = C.CLOSE_RED }):Play()
+    TweenService:Create(CloseX2, FAST_TWEEN, { BackgroundColor3 = C.CLOSE_RED }):Play()
 end)
 CloseBtn.MouseLeave:Connect(function()
-    TweenService:Create(CloseBtn, FAST_TWEEN, { BackgroundColor3 = Color3.fromRGB(200, 55, 55) }):Play()
+    CloseBtn.BackgroundTransparency = 1
+    TweenService:Create(CloseX1, FAST_TWEEN, { BackgroundColor3 = C.TEXT_SECONDARY }):Play()
+    TweenService:Create(CloseX2, FAST_TWEEN, { BackgroundColor3 = C.TEXT_SECONDARY }):Play()
 end)
-
-print("[11/20] Close button done")
 
 -- ============================================================================
 --  SIDEBAR
 -- ============================================================================
 local Sidebar = new("Frame", {
-    Name = "Sidebar",
-    Size = UDim2.new(0, 110, 1, -48),
-    Position = UDim2.new(0, 0, 0, 48),
+    Size = UDim2.new(0, 120, 1, -36),
+    Position = UDim2.new(0, 0, 0, 36),
     BackgroundColor3 = C.BG_SIDEBAR,
     BorderSizePixel = 0,
-    ZIndex = 2,
     Parent = MainFrame,
 })
 
@@ -297,16 +277,14 @@ new("Frame", {
 })
 
 local TabContainer = new("Frame", {
-    Size = UDim2.new(1, 0, 0, 100),
-    Position = UDim2.new(0, 0, 0, 14),
+    Size = UDim2.new(1, 0, 0, 90),
+    Position = UDim2.new(0, 0, 0, 10),
     BackgroundTransparency = 1,
     Parent = Sidebar,
 })
 
-new("UIPadding", { PaddingLeft = UDim.new(0, 8), PaddingRight = UDim.new(0, 8) }, TabContainer)
-new("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 6) }, TabContainer)
-
-print("[12/20] Sidebar done")
+new("UIPadding", { PaddingLeft = UDim.new(0, 6), PaddingRight = UDim.new(0, 6) }, TabContainer)
+new("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 4) }, TabContainer)
 
 -- ============================================================================
 --  TAB SYSTEM
@@ -318,11 +296,12 @@ local tabFrames = {}
 local function createTabButton(name, label, order)
     local btn = new("TextButton", {
         Name = name .. "Tab",
-        Size = UDim2.new(1, 0, 0, 38),
-        BackgroundColor3 = C.TAB_INACTIVE,
+        Size = UDim2.new(1, 0, 0, 34),
+        BackgroundColor3 = Color3.fromRGB(0, 0, 0),
+        BackgroundTransparency = 1,
         BorderSizePixel = 0,
-        Text = "  " .. label,
-        TextColor3 = C.TEXT_DIM,
+        Text = label,
+        TextColor3 = C.TEXT_SECONDARY,
         Font = Enum.Font.GothamMedium,
         TextSize = 12,
         TextXAlignment = Enum.TextXAlignment.Left,
@@ -330,44 +309,49 @@ local function createTabButton(name, label, order)
         AutoButtonColor = false,
         Parent = TabContainer,
     })
-    new("UICorner", { CornerRadius = UDim.new(0, 8) }, btn)
+    new("UICorner", { CornerRadius = UDim.new(0, 6) }, btn)
+    new("UIPadding", { PaddingLeft = UDim.new(0, 10) }, btn)
 
-    local accent = new("Frame", {
-        Name = "Accent",
-        Size = UDim2.new(0, 3, 0.7, 0),
-        Position = UDim2.new(0, 0, 0.15, 0),
+    local indicator = new("Frame", {
+        Size = UDim2.new(0, 3, 0.6, 0),
+        Position = UDim2.new(0, 0, 0.2, 0),
         BackgroundColor3 = C.ACCENT,
+        BackgroundTransparency = 1,
         BorderSizePixel = 0,
-        Visible = false,
         Parent = btn,
     })
-    new("UICorner", { CornerRadius = UDim.new(0, 2) }, accent)
+    new("UICorner", { CornerRadius = UDim.new(0, 2) }, indicator)
 
-    tabButtons[name] = { button = btn, accent = accent }
+    tabButtons[name] = { button = btn, indicator = indicator }
+
+    btn.MouseEnter:Connect(function()
+        if activeTab ~= name then
+            btn.BackgroundTransparency = 0.5
+            btn.BackgroundColor3 = C.TAB_HOVER
+        end
+    end)
+    btn.MouseLeave:Connect(function()
+        if activeTab ~= name then
+            btn.BackgroundTransparency = 1
+        end
+    end)
 
     btn.MouseButton1Click:Connect(function()
         activeTab = name
         for tName, tData in pairs(tabButtons) do
             if tName == name then
-                tData.accent.Visible = true
-                TweenService:Create(tData.button, FAST_TWEEN, {
-                    BackgroundColor3 = C.TAB_ACTIVE_BG,
-                    TextColor3 = C.TEXT_WHITE,
-                }):Play()
+                tData.button.BackgroundColor3 = C.TAB_ACTIVE
+                tData.button.BackgroundTransparency = 0
+                tData.button.TextColor3 = C.TEXT_WHITE
+                tData.indicator.BackgroundTransparency = 0
             else
-                tData.accent.Visible = false
-                TweenService:Create(tData.button, FAST_TWEEN, {
-                    BackgroundColor3 = C.TAB_INACTIVE,
-                    TextColor3 = C.TEXT_DIM,
-                }):Play()
+                tData.button.BackgroundTransparency = 1
+                tData.button.TextColor3 = C.TEXT_SECONDARY
+                tData.indicator.BackgroundTransparency = 1
             end
         end
         for fName, fData in pairs(tabFrames) do
-            if fName == name then
-                fData.Visible = true
-            else
-                fData.Visible = false
-            end
+            fData.Visible = (fName == name)
         end
     end)
 
@@ -377,42 +361,38 @@ end
 createTabButton("main", "Main", 1)
 createTabButton("credits", "Credits", 2)
 
-tabButtons["main"].accent.Visible = true
-tabButtons["main"].button.BackgroundColor3 = C.TAB_ACTIVE_BG
+tabButtons["main"].button.BackgroundColor3 = C.TAB_ACTIVE
+tabButtons["main"].button.BackgroundTransparency = 0
 tabButtons["main"].button.TextColor3 = C.TEXT_WHITE
-
-print("[13/20] Tabs created")
+tabButtons["main"].indicator.BackgroundTransparency = 0
 
 -- ============================================================================
 --  CONTENT AREA
 -- ============================================================================
 local ContentArea = new("Frame", {
-    Name = "ContentArea",
-    Size = UDim2.new(1, -118, 1, -62),
-    Position = UDim2.new(0, 110, 0, 52),
-    BackgroundTransparency = 1,
+    Size = UDim2.new(1, -120, 1, -36),
+    Position = UDim2.new(0, 120, 0, 36),
+    BackgroundColor3 = C.BG_CONTENT,
+    BorderSizePixel = 0,
     ClipsDescendants = true,
     Parent = MainFrame,
 })
 
 new("UIPadding", {
-    PaddingLeft = UDim.new(0, 14),
-    PaddingRight = UDim.new(0, 14),
-    PaddingTop = UDim.new(0, 10),
-    PaddingBottom = UDim.new(0, 10),
+    PaddingLeft = UDim.new(0, 16),
+    PaddingRight = UDim.new(0, 16),
+    PaddingTop = UDim2.new(0, 14),
+    PaddingBottom = UDim.new(0, 14),
 }, ContentArea)
 
-print("[14/20] Content area done")
-
 -- ============================================================================
---  MAIN TAB CONTENT
+--  MAIN TAB
 -- ============================================================================
 local MainContent = new("ScrollingFrame", {
-    Name = "MainContent",
     Size = UDim2.new(1, 0, 1, 0),
     BackgroundTransparency = 1,
     BorderSizePixel = 0,
-    ScrollBarThickness = 3,
+    ScrollBarThickness = 2,
     CanvasSize = UDim2.new(0, 0, 0, 0),
     Parent = ContentArea,
 })
@@ -420,51 +400,86 @@ tabFrames["main"] = MainContent
 
 new("UIListLayout", {
     SortOrder = Enum.SortOrder.LayoutOrder,
-    Padding = UDim2.new(0, 10),
+    Padding = UDim.new(0, 10),
 }, MainContent)
 
-print("[15/20] Main tab scroll frame done")
+-- (stats section removed — clean layout)
 
--- Toggle card builder
-local function createToggleCard(name, label, iconText, order, onToggle)
-    local card = new("TextButton", {
-        Name = name,
-        Size = UDim2.new(1, 0, 0, 52),
+-- ============================================================================
+--  EXECUTION ENGINES
+-- ============================================================================
+local function startAutofarm()
+    task.spawn(function()
+        while _G.AutofarmEnabled do
+            if ClickRemote then
+                pcall(function()
+                    if ClickRemote:IsA("RemoteEvent") then
+                        ClickRemote:FireServer()
+                    elseif ClickRemote:IsA("RemoteFunction") then
+                        task.spawn(function() ClickRemote:InvokeServer() end)
+                    end
+                end)
+            else
+                warn("[NEXUS] Click Remote not found — cannot farm.")
+                break
+            end
+            task.wait(0.1) -- 10 clicks/sec, server won't rate-limit this
+        end
+    end)
+end
+
+local function startAutoSpin()
+    task.spawn(function()
+        while _G.AutoSpinEnabled do
+            if SpinRemote then
+                pcall(function()
+                    if SpinRemote:IsA("RemoteEvent") then
+                        SpinRemote:FireServer()
+                    elseif SpinRemote:IsA("RemoteFunction") then
+                        task.spawn(function() SpinRemote:InvokeServer() end)
+                    end
+                end)
+            else
+                warn("[NEXUS] Spin Remote not found — cannot spin.")
+                break
+            end
+            task.wait(1) -- 1 spin/sec
+        end
+    end)
+end
+
+-- (stats updater removed)
+
+-- ============================================================================
+--  TOGGLE CARD BUILDER
+-- ============================================================================
+local function createToggleCard(name, label, description, order, onToggle)
+    local card = new("Frame", {
+        Size = UDim2.new(1, 0, 0, 54),
         BackgroundColor3 = C.BG_CARD,
         BorderSizePixel = 0,
-        Text = "",
-        AutoButtonColor = false,
         LayoutOrder = order,
         Parent = MainContent,
     })
-    new("UICorner", { CornerRadius = UDim.new(0, 10) }, card)
-    new("UIStroke", { Thickness = 0.5, Color = C.BORDER, Transparency = 0.3 }, card)
+    new("UICorner", { CornerRadius = UDim.new(0, 6) }, card)
 
-    local iconCircle = new("Frame", {
-        Size = UDim2.new(0, 32, 0, 32),
-        Position = UDim2.new(0, 10, 0.5, -16),
-        BackgroundColor3 = C.ACCENT_DIM,
-        BorderSizePixel = 0,
-        Parent = card,
-    })
-    new("UICorner", { CornerRadius = UDim.new(1, 0) }, iconCircle)
-
-    new("TextLabel", {
-        Size = UDim2.new(1, 0, 1, 0),
-        BackgroundTransparency = 1,
-        Text = iconText,
-        TextColor3 = C.TEXT_WHITE,
-        Font = Enum.Font.GothamBold,
-        TextSize = 13,
-        Parent = iconCircle,
-    })
+    card.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement then
+            TweenService:Create(card, FAST_TWEEN, { BackgroundColor3 = C.BG_CARD_HOVER }):Play()
+        end
+    end)
+    card.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement then
+            TweenService:Create(card, FAST_TWEEN, { BackgroundColor3 = C.BG_CARD }):Play()
+        end
+    end)
 
     new("TextLabel", {
-        Size = UDim2.new(0, 140, 0, 16),
-        Position = UDim2.new(0, 52, 0, 10),
+        Size = UDim2.new(1, -70, 0, 18),
+        Position = UDim2.new(0, 14, 0, 10),
         BackgroundTransparency = 1,
         Text = label,
-        TextColor3 = C.TEXT_WHITE,
+        TextColor3 = C.TEXT_PRIMARY,
         Font = Enum.Font.GothamMedium,
         TextSize = 13,
         TextXAlignment = Enum.TextXAlignment.Left,
@@ -472,10 +487,10 @@ local function createToggleCard(name, label, iconText, order, onToggle)
     })
 
     new("TextLabel", {
-        Size = UDim2.new(0, 140, 0, 14),
-        Position = UDim2.new(0, 52, 0, 28),
+        Size = UDim2.new(1, -70, 0, 14),
+        Position = UDim2.new(0, 14, 0, 30),
         BackgroundTransparency = 1,
-        Text = "Click to toggle",
+        Text = description,
         TextColor3 = C.TEXT_MUTED,
         Font = Enum.Font.Gotham,
         TextSize = 10,
@@ -483,118 +498,43 @@ local function createToggleCard(name, label, iconText, order, onToggle)
         Parent = card,
     })
 
-    local pill = new("Frame", {
-        Name = "Pill",
-        Size = UDim2.new(0, 44, 0, 22),
-        Position = UDim2.new(1, -56, 0.5, -11),
-        BackgroundColor3 = C.RED_DIM,
+    local track = new("TextButton", {
+        Size = UDim2.new(0, 40, 0, 20),
+        Position = UDim2.new(1, -56, 0.5, -10),
+        BackgroundColor3 = C.TOGGLE_OFF,
         BorderSizePixel = 0,
+        Text = "",
+        AutoButtonColor = false,
         Parent = card,
     })
-    new("UICorner", { CornerRadius = UDim.new(1, 0) }, pill)
-
-    local pillLabel = new("TextLabel", {
-        Size = UDim2.new(1, 0, 1, 0),
-        BackgroundTransparency = 1,
-        Text = "OFF",
-        TextColor3 = C.TEXT_WHITE,
-        Font = Enum.Font.GothamBold,
-        TextSize = 10,
-        Parent = pill,
-    })
+    new("UICorner", { CornerRadius = UDim.new(1, 0) }, track)
 
     local knob = new("Frame", {
-        Name = "Knob",
-        Size = UDim2.new(0, 18, 0, 18),
-        Position = UDim2.new(0, 2, 0.5, -9),
-        BackgroundColor3 = C.TEXT_WHITE,
+        Size = UDim2.new(0, 16, 0, 16),
+        Position = UDim2.new(0, 2, 0.5, -8),
+        BackgroundColor3 = C.TOGGLE_KNOB,
         BorderSizePixel = 0,
-        Parent = pill,
+        Parent = track,
     })
     new("UICorner", { CornerRadius = UDim.new(1, 0) }, knob)
 
-    card.MouseEnter:Connect(function()
-        TweenService:Create(card, FAST_TWEEN, { BackgroundColor3 = C.BG_CARD_HOVER }):Play()
-    end)
-    card.MouseLeave:Connect(function()
-        TweenService:Create(card, FAST_TWEEN, { BackgroundColor3 = C.BG_CARD }):Play()
-    end)
-
     local state = false
-    card.MouseButton1Click:Connect(function()
+    track.MouseButton1Click:Connect(function()
         state = not state
         onToggle(state)
         if state then
-            TweenService:Create(pill, FAST_TWEEN, { BackgroundColor3 = C.GREEN }):Play()
-            TweenService:Create(knob, FAST_TWEEN, { Position = UDim2.new(0, 24, 0.5, -9) }):Play()
-            pillLabel.Text = "ON"
-            TweenService:Create(iconCircle, FAST_TWEEN, { BackgroundColor3 = C.ACCENT }):Play()
+            TweenService:Create(track, FAST_TWEEN, { BackgroundColor3 = C.ACCENT }):Play()
+            TweenService:Create(knob, FAST_TWEEN, { Position = UDim2.new(0, 22, 0.5, -8) }):Play()
         else
-            TweenService:Create(pill, FAST_TWEEN, { BackgroundColor3 = C.RED_DIM }):Play()
-            TweenService:Create(knob, FAST_TWEEN, { Position = UDim2.new(0, 2, 0.5, -9) }):Play()
-            pillLabel.Text = "OFF"
-            TweenService:Create(iconCircle, FAST_TWEEN, { BackgroundColor3 = C.ACCENT_DIM }):Play()
+            TweenService:Create(track, FAST_TWEEN, { BackgroundColor3 = C.TOGGLE_OFF }):Play()
+            TweenService:Create(knob, FAST_TWEEN, { Position = UDim2.new(0, 2, 0.5, -8) }):Play()
         end
     end)
 end
 
-print("[16/20] Toggle card function defined")
-
--- ============================================================================
---  EXECUTION ENGINES
--- ============================================================================
-local function startAutofarm()
-    task.spawn(function()
-        local connection
-        connection = RunService.Heartbeat:Connect(function()
-            if not _G.AutofarmEnabled then
-                if connection then connection:Disconnect() end
-                return
-            end
-            if ClickRemote then
-                if ClickRemote:IsA("RemoteEvent") then
-                    for i = 1, 5 do ClickRemote:FireServer() end
-                elseif ClickRemote:IsA("RemoteFunction") then
-                    for i = 1, 5 do
-                        task.spawn(function() ClickRemote:InvokeServer() end)
-                    end
-                end
-            else
-                warn("[NEXUS] Click Remote missing.")
-                if connection then connection:Disconnect() end
-            end
-        end)
-    end)
-end
-
-local function startAutoSpin()
-    task.spawn(function()
-        local connection
-        connection = RunService.Heartbeat:Connect(function()
-            if not _G.AutoSpinEnabled then
-                if connection then connection:Disconnect() end
-                return
-            end
-            if SpinRemote then
-                if SpinRemote:IsA("RemoteEvent") then
-                    SpinRemote:FireServer()
-                elseif SpinRemote:IsA("RemoteFunction") then
-                    task.spawn(function() SpinRemote:InvokeServer() end)
-                end
-            else
-                warn("[NEXUS] Spin Remote missing.")
-                if connection then connection:Disconnect() end
-            end
-            task.wait(0.05)
-        end)
-    end)
-end
-
-print("[17/20] Engine functions defined")
-
 -- Section label
 new("TextLabel", {
-    Size = UDim2.new(1, 0, 0, 20),
+    Size = UDim2.new(1, 0, 0, 16),
     BackgroundTransparency = 1,
     Text = "AUTOMATION",
     TextColor3 = C.TEXT_MUTED,
@@ -605,27 +545,23 @@ new("TextLabel", {
     Parent = MainContent,
 })
 
-print("[18/20] Section label created")
-
-createToggleCard("ClickToggle", "Autofarm Clicker", "A", 2, function(state)
+-- Toggle cards
+createToggleCard("ClickToggle", "Smart Autoclicker", "Automatically clicks for you", 2, function(state)
     _G.AutofarmEnabled = state
-    if state then startAutofarm() end
+    if state then
+        startAutofarm()
+    end
 end)
 
-print("[19/20] Click toggle card created")
-
-createToggleCard("SpinToggle", "Auto Spin Wheel", "S", 3, function(state)
+createToggleCard("SpinToggle", "Auto Spin Wheel", "Spins the wheel automatically", 3, function(state)
     _G.AutoSpinEnabled = state
     if state then startAutoSpin() end
 end)
-
-print("[20/20] Spin toggle card created — FULL SCRIPT COMPLETE")
 
 -- ============================================================================
 --  CREDITS TAB
 -- ============================================================================
 local CreditsContent = new("Frame", {
-    Name = "CreditsContent",
     Size = UDim2.new(1, 0, 1, 0),
     BackgroundTransparency = 1,
     Visible = false,
@@ -633,92 +569,80 @@ local CreditsContent = new("Frame", {
 })
 tabFrames["credits"] = CreditsContent
 
-new("Frame", {
-    Size = UDim2.new(0, 50, 0, 3),
-    Position = UDim2.new(0.5, -25, 0, 20),
-    BackgroundColor3 = C.ACCENT,
-    BorderSizePixel = 0,
+local CreditsCenter = new("Frame", {
+    Size = UDim2.new(1, 0, 0, 180),
+    Position = UDim2.new(0, 0, 0.5, -90),
+    BackgroundTransparency = 1,
     Parent = CreditsContent,
 })
 
-local AvatarFrame = new("Frame", {
-    Size = UDim2.new(0, 64, 0, 64),
-    Position = UDim2.new(0.5, -32, 0, 45),
-    BackgroundColor3 = C.ACCENT_DIM,
+local Avatar = new("Frame", {
+    Size = UDim2.new(0, 56, 0, 56),
+    Position = UDim2.new(0.5, -28, 0, 0),
+    BackgroundColor3 = C.BG_CARD,
     BorderSizePixel = 0,
-    Parent = CreditsContent,
+    Parent = CreditsCenter,
 })
-new("UICorner", { CornerRadius = UDim.new(1, 0) }, AvatarFrame)
-new("UIStroke", { Thickness = 2, Color = C.ACCENT }, AvatarFrame)
+new("UICorner", { CornerRadius = UDim.new(1, 0) }, Avatar)
 
 new("TextLabel", {
     Size = UDim2.new(1, 0, 1, 0),
     BackgroundTransparency = 1,
     Text = "M",
-    TextColor3 = C.TEXT_WHITE,
+    TextColor3 = C.TEXT_SECONDARY,
     Font = Enum.Font.GothamBold,
-    TextSize = 28,
-    Parent = AvatarFrame,
-})
-
-new("TextLabel", {
-    Size = UDim2.new(1, 0, 0, 18),
-    Position = UDim2.new(0, 0, 0, 125),
-    BackgroundTransparency = 1,
-    Text = "M A D E  B Y",
-    TextColor3 = C.TEXT_MUTED,
-    Font = Enum.Font.GothamMedium,
-    TextSize = 10,
-    Parent = CreditsContent,
-})
-
-new("TextLabel", {
-    Size = UDim2.new(1, 0, 0, 30),
-    Position = UDim2.new(0, 0, 0, 145),
-    BackgroundTransparency = 1,
-    Text = "madeonice",
-    TextColor3 = C.ACCENT_GLOW,
-    Font = Enum.Font.GothamBold,
-    TextSize = 22,
-    Parent = CreditsContent,
+    TextSize = 24,
+    Parent = Avatar,
 })
 
 new("TextLabel", {
     Size = UDim2.new(1, 0, 0, 16),
-    Position = UDim2.new(0, 0, 0, 180),
+    Position = UDim2.new(0, 0, 0, 70),
     BackgroundTransparency = 1,
-    Text = "v2.0.0",
+    Text = "MADE BY",
     TextColor3 = C.TEXT_MUTED,
-    Font = Enum.Font.Gotham,
-    TextSize = 11,
-    Parent = CreditsContent,
+    Font = Enum.Font.GothamBold,
+    TextSize = 10,
+    Parent = CreditsCenter,
 })
 
 new("TextLabel", {
-    Size = UDim2.new(1, -20, 0, 40),
-    Position = UDim2.new(0, 10, 0, 210),
+    Size = UDim2.new(1, 0, 0, 28),
+    Position = UDim2.new(0, 0, 0, 90),
     BackgroundTransparency = 1,
-    Text = "Premium Roblox automation suite.\nBuilt with performance and style in mind.",
-    TextColor3 = C.TEXT_DIM,
+    Text = "madeonice",
+    TextColor3 = C.TEXT_WHITE,
+    Font = Enum.Font.GothamBold,
+    TextSize = 20,
+    Parent = CreditsCenter,
+})
+
+new("TextLabel", {
+    Size = UDim2.new(1, 0, 0, 14),
+    Position = UDim2.new(0, 0, 0, 124),
+    BackgroundTransparency = 1,
+    Text = "v4.0.0",
+    TextColor3 = C.TEXT_MUTED,
     Font = Enum.Font.Gotham,
     TextSize = 11,
-    TextWrapped = true,
-    TextXAlignment = Enum.TextXAlignment.Center,
-    Parent = CreditsContent,
+    Parent = CreditsCenter,
+})
+
+new("TextLabel", {
+    Size = UDim2.new(1, 0, 0, 14),
+    Position = UDim2.new(0, 0, 0, 148),
+    BackgroundTransparency = 1,
+    Text = "Premium automation suite",
+    TextColor3 = C.TEXT_MUTED,
+    Font = Enum.Font.Gotham,
+    TextSize = 11,
+    Parent = CreditsCenter,
 })
 
 -- ============================================================================
 --  DRAG ENGINE
 -- ============================================================================
 local dragging, dragInput, dragStart, startPos
-
-local function updateDrag(input)
-    local delta = input.Position - dragStart
-    MainFrame.Position = UDim2.new(
-        startPos.X.Scale, startPos.X.Offset + delta.X,
-        startPos.Y.Scale, startPos.Y.Offset + delta.Y
-    )
-end
 
 TopBar.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -738,7 +662,13 @@ TopBar.InputChanged:Connect(function(input)
 end)
 
 UserInputService.InputChanged:Connect(function(input)
-    if input == dragInput and dragging then updateDrag(input) end
+    if input == dragInput and dragging then
+        local delta = input.Position - dragStart
+        MainFrame.Position = UDim2.new(
+            startPos.X.Scale, startPos.X.Offset + delta.X,
+            startPos.Y.Scale, startPos.Y.Offset + delta.Y
+        )
+    end
 end)
 
 -- ============================================================================
@@ -752,8 +682,8 @@ local function closeUI()
     savedPosition = MainFrame.Position
 
     ToggleBtn.Position = UDim2.new(
-        savedPosition.X.Scale, savedPosition.X.Offset + MainFrame.Size.X.Offset / 2 - 24,
-        savedPosition.Y.Scale, savedPosition.Y.Offset + 24
+        savedPosition.X.Scale, savedPosition.X.Offset + MainFrame.Size.X.Offset / 2 - 21,
+        savedPosition.Y.Scale, savedPosition.Y.Offset + 30
     )
 
     TweenService:Create(MainFrame, CLOSE_TWEEN, {
@@ -763,7 +693,7 @@ local function closeUI()
 
     ToggleBtn.Visible = true
     ToggleBtn.Size = UDim2.new(0, 0, 0, 0)
-    TweenService:Create(ToggleBtn, TOGGLE_POP, { Size = UDim2.new(0, 48, 0, 48) }):Play()
+    TweenService:Create(ToggleBtn, TOGGLE_POP, { Size = UDim2.new(0, 42, 0, 42) }):Play()
 end
 
 local function openUI()
@@ -771,17 +701,17 @@ local function openUI()
     isUIOpen = true
 
     TweenService:Create(ToggleBtn, FAST_TWEEN, { Size = UDim2.new(0, 0, 0, 0) }):Play()
-    task.delay(0.2, function() ToggleBtn.Visible = false end)
+    task.delay(0.15, function() ToggleBtn.Visible = false end)
 
     MainFrame.Size = UDim2.new(0, 0, 0, 0)
     MainFrame.BackgroundTransparency = 1
     MainFrame.Position = UDim2.new(
-        ToggleBtn.Position.X.Scale, ToggleBtn.Position.X.Offset + 24 - 220,
-        ToggleBtn.Position.Y.Scale, ToggleBtn.Position.Y.Offset - 155
+        ToggleBtn.Position.X.Scale, ToggleBtn.Position.X.Offset + 21 - 230,
+        ToggleBtn.Position.Y.Scale, ToggleBtn.Position.Y.Offset - 140
     )
 
     TweenService:Create(MainFrame, OPEN_TWEEN, {
-        Size = UDim2.new(0, 440, 0, 310),
+        Size = UDim2.new(0, 460, 0, 280),
         BackgroundTransparency = 0,
     }):Play()
 end
