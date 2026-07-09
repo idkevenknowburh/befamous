@@ -3,14 +3,17 @@
 --  Credits: madeonice
 -- ============================================================================
 
+print("[1/20] Script started")
+
 -- Services
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
-
 local LocalPlayer = Players.LocalPlayer
+
+print("[2/20] Services loaded — Player:", LocalPlayer.Name)
 
 -- Dynamic Remote Network Locator
 local RemotesFolder = ReplicatedStorage:FindFirstChild("Utilities")
@@ -24,7 +27,6 @@ if RemotesFolder then
     local children = RemotesFolder:GetChildren()
     ClickRemote = children[2]
     SpinRemote = children[58]
-
     if not ClickRemote or (ClickRemote.Name ~= "Click" and #children >= 2) then
         for _, child in ipairs(children) do
             if child.Name == "Click" then ClickRemote = child break end
@@ -37,9 +39,10 @@ if RemotesFolder then
     end
 end
 
--- Global State Control
 _G.AutofarmEnabled = false
 _G.AutoSpinEnabled = false
+
+print("[3/20] Remotes found — Click:", tostring(ClickRemote ~= nil), "Spin:", tostring(SpinRemote ~= nil))
 
 -- ============================================================================
 --  TWEEN PRESETS
@@ -73,6 +76,8 @@ local C = {
     TAB_INACTIVE   = Color3.fromRGB(22, 24, 34),
 }
 
+print("[4/20] Colors & tweens defined")
+
 -- ============================================================================
 --  UTILITY: Quick Instance Creator
 -- ============================================================================
@@ -87,6 +92,8 @@ local function new(class, props, parent)
     return inst
 end
 
+print("[5/20] Helper function defined")
+
 -- ============================================================================
 --  SCREEN GUI
 -- ============================================================================
@@ -95,6 +102,8 @@ ScreenGui.Name = "NexusMetricsUI"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.DisplayOrder = 999
 ScreenGui.Parent = game:GetService("CoreGui")
+
+print("[6/20] ScreenGui created and parented to CoreGui — children:", #ScreenGui:GetChildren())
 
 -- ============================================================================
 --  MINIMIZE / OPEN TOGGLE BUTTON
@@ -114,13 +123,9 @@ local ToggleBtn = new("TextButton", {
 })
 
 new("UICorner", { CornerRadius = UDim.new(0, 14) }, ToggleBtn)
-new("UIStroke", {
-    Thickness = 1.5,
-    Color = C.ACCENT_GLOW,
-    Transparency = 0.4,
-}, ToggleBtn)
+new("UIStroke", { Thickness = 1.5, Color = C.ACCENT_GLOW, Transparency = 0.4 }, ToggleBtn)
 
--- Custom icon: abstract "N" shape using rotated frame bars
+-- Custom icon
 local IconBg = new("Frame", {
     Size = UDim2.new(0, 20, 0, 20),
     Position = UDim2.new(0.5, -10, 0.5, -10),
@@ -128,40 +133,12 @@ local IconBg = new("Frame", {
     Parent = ToggleBtn,
 })
 
-new("Frame", {
-    Size = UDim2.new(0, 14, 0, 2.5),
-    Position = UDim2.new(0, 2, 0, 3),
-    Rotation = -45,
-    BackgroundColor3 = C.TEXT_WHITE,
-    BorderSizePixel = 0,
-    Parent = IconBg,
-})
-new("Frame", {
-    Size = UDim2.new(0, 14, 0, 2.5),
-    Position = UDim2.new(0, 4, 0, 3),
-    Rotation = 45,
-    BackgroundColor3 = C.TEXT_WHITE,
-    BorderSizePixel = 0,
-    Parent = IconBg,
-})
-new("Frame", {
-    Size = UDim2.new(0, 14, 0, 2.5),
-    Position = UDim2.new(0, 2, 0, 14),
-    Rotation = 45,
-    BackgroundColor3 = C.TEXT_WHITE,
-    BorderSizePixel = 0,
-    Parent = IconBg,
-})
-new("Frame", {
-    Size = UDim2.new(0, 14, 0, 2.5),
-    Position = UDim2.new(0, 4, 0, 14),
-    Rotation = -45,
-    BackgroundColor3 = C.TEXT_WHITE,
-    BorderSizePixel = 0,
-    Parent = IconBg,
-})
+new("Frame", { Size = UDim2.new(0, 14, 0, 2.5), Position = UDim2.new(0, 2, 0, 3), Rotation = -45, BackgroundColor3 = C.TEXT_WHITE, BorderSizePixel = 0, Parent = IconBg })
+new("Frame", { Size = UDim2.new(0, 14, 0, 2.5), Position = UDim2.new(0, 4, 0, 3), Rotation = 45, BackgroundColor3 = C.TEXT_WHITE, BorderSizePixel = 0, Parent = IconBg })
+new("Frame", { Size = UDim2.new(0, 14, 0, 2.5), Position = UDim2.new(0, 2, 0, 14), Rotation = 45, BackgroundColor3 = C.TEXT_WHITE, BorderSizePixel = 0, Parent = IconBg })
+new("Frame", { Size = UDim2.new(0, 14, 0, 2.5), Position = UDim2.new(0, 4, 0, 14), Rotation = -45, BackgroundColor3 = C.TEXT_WHITE, BorderSizePixel = 0, Parent = IconBg })
 
--- Toggle button hover glow
+-- Toggle glow
 local ToggleGlow = new("Frame", {
     Size = UDim2.new(1, 12, 1, 12),
     Position = UDim2.new(0, -6, 0, -6),
@@ -194,6 +171,8 @@ ToggleBtn.InputChanged:Connect(function(input)
     end
 end)
 
+print("[7/20] Toggle button created — ScreenGui children:", #ScreenGui:GetChildren())
+
 -- ============================================================================
 --  MAIN FRAME
 -- ============================================================================
@@ -207,14 +186,13 @@ local MainFrame = new("Frame", {
     Parent = ScreenGui,
 })
 
-new("UICorner", { CornerRadius = UDim.new(0, 14) }, MainFrame)
-new("UIStroke", {
-    Thickness = 1,
-    Color = C.BORDER,
-}, MainFrame)
+print("[8/20] MainFrame created — exists:", tostring(MainFrame ~= nil), "parent:", tostring(MainFrame.Parent))
 
--- Top gradient accent line
-local AccentLine = new("Frame", {
+new("UICorner", { CornerRadius = UDim.new(0, 14) }, MainFrame)
+new("UIStroke", { Thickness = 1, Color = C.BORDER }, MainFrame)
+
+-- Top accent line
+new("Frame", {
     Size = UDim2.new(0.35, 0, 0, 2),
     Position = UDim2.new(0.325, 0, 0, 0),
     BackgroundColor3 = C.ACCENT,
@@ -222,7 +200,8 @@ local AccentLine = new("Frame", {
     ZIndex = 5,
     Parent = MainFrame,
 })
-new("UICorner", { CornerRadius = UDim.new(0, 1) }, AccentLine)
+
+print("[9/20] MainFrame styled — children:", #MainFrame:GetChildren())
 
 -- ============================================================================
 --  TOP BAR
@@ -236,7 +215,6 @@ local TopBar = new("Frame", {
     Parent = MainFrame,
 })
 
--- Top-left rounded corners overlay
 local TopBarCorner = new("Frame", {
     Size = UDim2.new(1, 0, 1, 0),
     BackgroundColor3 = C.BG_TOPBAR,
@@ -247,7 +225,6 @@ local TopBarCorner = new("Frame", {
 })
 new("UICorner", { CornerRadius = UDim.new(0, 14) }, TopBarCorner)
 
--- Seamless bottom extension to hide corners
 new("Frame", {
     Size = UDim2.new(1, 0, 0, 12),
     Position = UDim2.new(0, 0, 1, -12),
@@ -257,7 +234,6 @@ new("Frame", {
     Parent = TopBar,
 })
 
--- Title
 new("TextLabel", {
     Size = UDim2.new(1, -80, 1, 0),
     Position = UDim2.new(0, 18, 0, 0),
@@ -271,7 +247,9 @@ new("TextLabel", {
     Parent = TopBar,
 })
 
--- Close (X) Button
+print("[10/20] TopBar done")
+
+-- Close button
 local CloseBtn = new("TextButton", {
     Name = "CloseBtn",
     Size = UDim2.new(0, 32, 0, 32),
@@ -285,25 +263,8 @@ local CloseBtn = new("TextButton", {
 })
 new("UICorner", { CornerRadius = UDim.new(0, 8) }, CloseBtn)
 
--- X icon lines
-new("Frame", {
-    Size = UDim2.new(0, 14, 0, 2),
-    Position = UDim2.new(0.5, -7, 0.5, -1),
-    Rotation = 45,
-    BackgroundColor3 = C.TEXT_WHITE,
-    BorderSizePixel = 0,
-    ZIndex = 5,
-    Parent = CloseBtn,
-})
-new("Frame", {
-    Size = UDim2.new(0, 14, 0, 2),
-    Position = UDim2.new(0.5, -7, 0.5, -1),
-    Rotation = -45,
-    BackgroundColor3 = C.TEXT_WHITE,
-    BorderSizePixel = 0,
-    ZIndex = 5,
-    Parent = CloseBtn,
-})
+new("Frame", { Size = UDim2.new(0, 14, 0, 2), Position = UDim2.new(0.5, -7, 0.5, -1), Rotation = 45, BackgroundColor3 = C.TEXT_WHITE, BorderSizePixel = 0, ZIndex = 5, Parent = CloseBtn })
+new("Frame", { Size = UDim2.new(0, 14, 0, 2), Position = UDim2.new(0.5, -7, 0.5, -1), Rotation = -45, BackgroundColor3 = C.TEXT_WHITE, BorderSizePixel = 0, ZIndex = 5, Parent = CloseBtn })
 
 CloseBtn.MouseEnter:Connect(function()
     TweenService:Create(CloseBtn, FAST_TWEEN, { BackgroundColor3 = Color3.fromRGB(240, 70, 70) }):Play()
@@ -311,6 +272,8 @@ end)
 CloseBtn.MouseLeave:Connect(function()
     TweenService:Create(CloseBtn, FAST_TWEEN, { BackgroundColor3 = Color3.fromRGB(200, 55, 55) }):Play()
 end)
+
+print("[11/20] Close button done")
 
 -- ============================================================================
 --  SIDEBAR
@@ -325,7 +288,6 @@ local Sidebar = new("Frame", {
     Parent = MainFrame,
 })
 
--- Sidebar right edge line
 new("Frame", {
     Size = UDim2.new(0, 1, 1, 0),
     Position = UDim2.new(1, 0, 0, 0),
@@ -341,15 +303,10 @@ local TabContainer = new("Frame", {
     Parent = Sidebar,
 })
 
-new("UIPadding", {
-    PaddingLeft = UDim.new(0, 8),
-    PaddingRight = UDim.new(0, 8),
-}, TabContainer)
+new("UIPadding", { PaddingLeft = UDim.new(0, 8), PaddingRight = UDim.new(0, 8) }, TabContainer)
+new("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 6) }, TabContainer)
 
-new("UIListLayout", {
-    SortOrder = Enum.SortOrder.LayoutOrder,
-    Padding = UDim.new(0, 6),
-}, TabContainer)
+print("[12/20] Sidebar done")
 
 -- ============================================================================
 --  TAB SYSTEM
@@ -420,10 +377,11 @@ end
 createTabButton("main", "Main", 1)
 createTabButton("credits", "Credits", 2)
 
--- Activate default tab
 tabButtons["main"].accent.Visible = true
 tabButtons["main"].button.BackgroundColor3 = C.TAB_ACTIVE_BG
 tabButtons["main"].button.TextColor3 = C.TEXT_WHITE
+
+print("[13/20] Tabs created")
 
 -- ============================================================================
 --  CONTENT AREA
@@ -444,6 +402,8 @@ new("UIPadding", {
     PaddingBottom = UDim.new(0, 10),
 }, ContentArea)
 
+print("[14/20] Content area done")
+
 -- ============================================================================
 --  MAIN TAB CONTENT
 -- ============================================================================
@@ -453,7 +413,6 @@ local MainContent = new("ScrollingFrame", {
     BackgroundTransparency = 1,
     BorderSizePixel = 0,
     ScrollBarThickness = 3,
-    ScrollBarImageColor3 = C.ACCENT,
     CanvasSize = UDim2.new(0, 0, 0, 0),
     Parent = ContentArea,
 })
@@ -461,8 +420,10 @@ tabFrames["main"] = MainContent
 
 new("UIListLayout", {
     SortOrder = Enum.SortOrder.LayoutOrder,
-    Padding = UDim.new(0, 10),
+    Padding = UDim2.new(0, 10),
 }, MainContent)
+
+print("[15/20] Main tab scroll frame done")
 
 -- Toggle card builder
 local function createToggleCard(name, label, iconText, order, onToggle)
@@ -477,13 +438,8 @@ local function createToggleCard(name, label, iconText, order, onToggle)
         Parent = MainContent,
     })
     new("UICorner", { CornerRadius = UDim.new(0, 10) }, card)
-    new("UIStroke", {
-        Thickness = 0.5,
-        Color = C.BORDER,
-        Transparency = 0.3,
-    }, card)
+    new("UIStroke", { Thickness = 0.5, Color = C.BORDER, Transparency = 0.3 }, card)
 
-    -- Icon circle
     local iconCircle = new("Frame", {
         Size = UDim2.new(0, 32, 0, 32),
         Position = UDim2.new(0, 10, 0.5, -16),
@@ -503,7 +459,6 @@ local function createToggleCard(name, label, iconText, order, onToggle)
         Parent = iconCircle,
     })
 
-    -- Label
     new("TextLabel", {
         Size = UDim2.new(0, 140, 0, 16),
         Position = UDim2.new(0, 52, 0, 10),
@@ -516,7 +471,6 @@ local function createToggleCard(name, label, iconText, order, onToggle)
         Parent = card,
     })
 
-    -- Sub-label
     new("TextLabel", {
         Size = UDim2.new(0, 140, 0, 14),
         Position = UDim2.new(0, 52, 0, 28),
@@ -529,7 +483,6 @@ local function createToggleCard(name, label, iconText, order, onToggle)
         Parent = card,
     })
 
-    -- Toggle pill
     local pill = new("Frame", {
         Name = "Pill",
         Size = UDim2.new(0, 44, 0, 22),
@@ -550,7 +503,6 @@ local function createToggleCard(name, label, iconText, order, onToggle)
         Parent = pill,
     })
 
-    -- Toggle knob
     local knob = new("Frame", {
         Name = "Knob",
         Size = UDim2.new(0, 18, 0, 18),
@@ -561,7 +513,6 @@ local function createToggleCard(name, label, iconText, order, onToggle)
     })
     new("UICorner", { CornerRadius = UDim.new(1, 0) }, knob)
 
-    -- Hover effect
     card.MouseEnter:Connect(function()
         TweenService:Create(card, FAST_TWEEN, { BackgroundColor3 = C.BG_CARD_HOVER }):Play()
     end)
@@ -585,27 +536,13 @@ local function createToggleCard(name, label, iconText, order, onToggle)
             TweenService:Create(iconCircle, FAST_TWEEN, { BackgroundColor3 = C.ACCENT_DIM }):Play()
         end
     end)
-
-    return { card = card, pill = pill, pillLabel = pillLabel, knob = knob, iconCircle = iconCircle }
 end
 
--- Section label
-local sectionLabel = new("TextLabel", {
-    Size = UDim2.new(1, 0, 0, 20),
-    BackgroundTransparency = 1,
-    Text = "AUTOMATION",
-    TextColor3 = C.TEXT_MUTED,
-    Font = Enum.Font.GothamBold,
-    TextSize = 10,
-    TextXAlignment = Enum.TextXAlignment.Left,
-    LayoutOrder = 1,
-    Parent = MainContent,
-})
+print("[16/20] Toggle card function defined")
 
 -- ============================================================================
---  EXECUTION ENGINES (defined before toggle callbacks reference them)
+--  EXECUTION ENGINES
 -- ============================================================================
-
 local function startAutofarm()
     task.spawn(function()
         local connection
@@ -653,19 +590,39 @@ local function startAutoSpin()
     end)
 end
 
--- Create toggle cards (after engines are defined)
+print("[17/20] Engine functions defined")
+
+-- Section label
+new("TextLabel", {
+    Size = UDim2.new(1, 0, 0, 20),
+    BackgroundTransparency = 1,
+    Text = "AUTOMATION",
+    TextColor3 = C.TEXT_MUTED,
+    Font = Enum.Font.GothamBold,
+    TextSize = 10,
+    TextXAlignment = Enum.TextXAlignment.Left,
+    LayoutOrder = 1,
+    Parent = MainContent,
+})
+
+print("[18/20] Section label created")
+
 createToggleCard("ClickToggle", "Autofarm Clicker", "A", 2, function(state)
     _G.AutofarmEnabled = state
     if state then startAutofarm() end
 end)
+
+print("[19/20] Click toggle card created")
 
 createToggleCard("SpinToggle", "Auto Spin Wheel", "S", 3, function(state)
     _G.AutoSpinEnabled = state
     if state then startAutoSpin() end
 end)
 
+print("[20/20] Spin toggle card created — FULL SCRIPT COMPLETE")
+
 -- ============================================================================
---  CREDITS TAB CONTENT
+--  CREDITS TAB
 -- ============================================================================
 local CreditsContent = new("Frame", {
     Name = "CreditsContent",
@@ -676,17 +633,14 @@ local CreditsContent = new("Frame", {
 })
 tabFrames["credits"] = CreditsContent
 
--- Decorative accent line
-local CreditsAccent = new("Frame", {
+new("Frame", {
     Size = UDim2.new(0, 50, 0, 3),
     Position = UDim2.new(0.5, -25, 0, 20),
     BackgroundColor3 = C.ACCENT,
     BorderSizePixel = 0,
     Parent = CreditsContent,
 })
-new("UICorner", { CornerRadius = UDim.new(0, 2) }, CreditsAccent)
 
--- Avatar circle
 local AvatarFrame = new("Frame", {
     Size = UDim2.new(0, 64, 0, 64),
     Position = UDim2.new(0.5, -32, 0, 45),
@@ -707,7 +661,6 @@ new("TextLabel", {
     Parent = AvatarFrame,
 })
 
--- "Made by" label
 new("TextLabel", {
     Size = UDim2.new(1, 0, 0, 18),
     Position = UDim2.new(0, 0, 0, 125),
@@ -719,7 +672,6 @@ new("TextLabel", {
     Parent = CreditsContent,
 })
 
--- Creator name
 new("TextLabel", {
     Size = UDim2.new(1, 0, 0, 30),
     Position = UDim2.new(0, 0, 0, 145),
@@ -731,7 +683,6 @@ new("TextLabel", {
     Parent = CreditsContent,
 })
 
--- Version
 new("TextLabel", {
     Size = UDim2.new(1, 0, 0, 16),
     Position = UDim2.new(0, 0, 0, 180),
@@ -743,7 +694,6 @@ new("TextLabel", {
     Parent = CreditsContent,
 })
 
--- Description
 new("TextLabel", {
     Size = UDim2.new(1, -20, 0, 40),
     Position = UDim2.new(0, 10, 0, 210),
@@ -758,7 +708,7 @@ new("TextLabel", {
 })
 
 -- ============================================================================
---  DRAG ENGINE (TopBar)
+--  DRAG ENGINE
 -- ============================================================================
 local dragging, dragInput, dragStart, startPos
 
