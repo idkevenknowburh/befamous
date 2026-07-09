@@ -1,3 +1,4 @@
+task.spawn(function()
 -- ============================================================================
 --  NEXUS METRICS v2 — Premium UI Redesign
 --  Credits: madeonice
@@ -79,7 +80,9 @@ local C = {
 local function new(class, props, parent)
     local inst = Instance.new(class)
     for k, v in pairs(props or {}) do
-        if k ~= "Parent" then inst[k] = v end
+        if k ~= "Parent" then
+            pcall(function() inst[k] = v end)
+        end
     end
     if parent then inst.Parent = parent end
     return inst
@@ -88,34 +91,14 @@ end
 -- ============================================================================
 --  SCREEN GUI
 -- ============================================================================
-local ScreenGui = new("ScreenGui", {
-    Name = "NexusMetricsUI",
-    ResetOnSpawn = false,
-    ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
-    DisplayOrder = 999,
-})
-
--- Try multiple parents in order of reliability via loadstring
-local guiParent = nil
-
-local ok1 = pcall(function()
-    local test = Instance.new("ScreenGui")
-    test.Parent = game:GetService("CoreGui")
-    test:Destroy()
-    guiParent = game:GetService("CoreGui")
-end)
-
-if not guiParent then
-    guiParent = LocalPlayer:FindFirstChild("PlayerGui") or LocalPlayer:WaitForChild("PlayerGui")
-end
-
-ScreenGui.Parent = guiParent
-print("[NEXUS] ScreenGui parented to:", ScreenGui.Parent and ScreenGui.Parent:GetFullName() or "NIL")
-print("[NEXUS] ScreenGui children after setup:", #ScreenGui:GetChildren())
-print("[NEXUS] MainFrame exists:", tostring(MainFrame ~= nil))
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "NexusMetricsUI"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.DisplayOrder = 999
+ScreenGui.Parent = game:GetService("CoreGui")
 
 -- ============================================================================
---  MINIMIZE / OPEN TOGGLE BUTTON  (always visible)
+--  MINIMIZE / OPEN TOGGLE BUTTON
 -- ============================================================================
 local savedPosition = UDim2.new(0.5, -210, 0.5, -155)
 
@@ -136,10 +119,9 @@ new("UIStroke", {
     Thickness = 1.5,
     Color = C.ACCENT_GLOW,
     Transparency = 0.4,
-    ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
 }, ToggleBtn)
 
--- Custom icon: layered diamond / abstract "N" shape using frames
+-- Custom icon: abstract "N" shape using rotated frame bars
 local IconBg = new("Frame", {
     Size = UDim2.new(0, 20, 0, 20),
     Position = UDim2.new(0.5, -10, 0.5, -10),
@@ -147,7 +129,6 @@ local IconBg = new("Frame", {
     Parent = ToggleBtn,
 })
 
--- Top-left to center-right bar
 new("Frame", {
     Size = UDim2.new(0, 14, 0, 2.5),
     Position = UDim2.new(0, 2, 0, 3),
@@ -156,7 +137,6 @@ new("Frame", {
     BorderSizePixel = 0,
     Parent = IconBg,
 })
--- Top-right to center-left bar
 new("Frame", {
     Size = UDim2.new(0, 14, 0, 2.5),
     Position = UDim2.new(0, 4, 0, 3),
@@ -165,7 +145,6 @@ new("Frame", {
     BorderSizePixel = 0,
     Parent = IconBg,
 })
--- Bottom-left to center-right bar
 new("Frame", {
     Size = UDim2.new(0, 14, 0, 2.5),
     Position = UDim2.new(0, 2, 0, 14),
@@ -174,7 +153,6 @@ new("Frame", {
     BorderSizePixel = 0,
     Parent = IconBg,
 })
--- Bottom-right to center-left bar
 new("Frame", {
     Size = UDim2.new(0, 14, 0, 2.5),
     Position = UDim2.new(0, 4, 0, 14),
@@ -184,22 +162,18 @@ new("Frame", {
     Parent = IconBg,
 })
 
--- Toggle button hover glow effect
-local ToggleGlow = new("ImageLabel", {
-    Size = UDim2.new(1, 16, 1, 16),
-    Position = UDim2.new(0, -8, 0, -8),
-    BackgroundTransparency = 1,
-    ImageTransparency = 0.7,
-    ImageColor3 = C.ACCENT,
-    ScaleType = Enum.ScaleType.Slice,
-    SliceCenter = Rect.new(24, 24, 276, 276),
-    -- Using a rounded rect asset id (Roblox built-in)
-    Image = "rbxassetid://3570695787",
+-- Toggle button hover glow
+local ToggleGlow = new("Frame", {
+    Size = UDim2.new(1, 12, 1, 12),
+    Position = UDim2.new(0, -6, 0, -6),
+    BackgroundColor3 = C.ACCENT,
+    BackgroundTransparency = 0.7,
+    BorderSizePixel = 0,
     Parent = ToggleBtn,
 })
 new("UICorner", { CornerRadius = UDim.new(0, 18) }, ToggleGlow)
 
--- Toggle drag (simple)
+-- Toggle drag
 local toggleDragging, toggleDragStart, toggleStartPos
 ToggleBtn.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -238,10 +212,9 @@ new("UICorner", { CornerRadius = UDim.new(0, 14) }, MainFrame)
 new("UIStroke", {
     Thickness = 1,
     Color = C.BORDER,
-    ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
 }, MainFrame)
 
--- Subtle top gradient accent line
+-- Top gradient accent line
 local AccentLine = new("Frame", {
     Size = UDim2.new(0.35, 0, 0, 2),
     Position = UDim2.new(0.325, 0, 0, 0),
@@ -264,7 +237,7 @@ local TopBar = new("Frame", {
     Parent = MainFrame,
 })
 
--- Top-left rounded corners only via overlay trick
+-- Top-left rounded corners overlay
 local TopBarCorner = new("Frame", {
     Size = UDim2.new(1, 0, 1, 0),
     BackgroundColor3 = C.BG_TOPBAR,
@@ -275,7 +248,7 @@ local TopBarCorner = new("Frame", {
 })
 new("UICorner", { CornerRadius = UDim.new(0, 14) }, TopBarCorner)
 
--- Seamless extension to hide bottom corners
+-- Seamless bottom extension to hide corners
 new("Frame", {
     Size = UDim2.new(1, 0, 0, 12),
     Position = UDim2.new(0, 0, 1, -12),
@@ -313,7 +286,7 @@ local CloseBtn = new("TextButton", {
 })
 new("UICorner", { CornerRadius = UDim.new(0, 8) }, CloseBtn)
 
--- X icon (two crossing lines)
+-- X icon lines
 new("Frame", {
     Size = UDim2.new(0, 14, 0, 2),
     Position = UDim2.new(0.5, -7, 0.5, -1),
@@ -333,7 +306,6 @@ new("Frame", {
     Parent = CloseBtn,
 })
 
--- Close button hover effect
 CloseBtn.MouseEnter:Connect(function()
     TweenService:Create(CloseBtn, FAST_TWEEN, { BackgroundColor3 = Color3.fromRGB(240, 70, 70) }):Play()
 end)
@@ -354,7 +326,7 @@ local Sidebar = new("Frame", {
     Parent = MainFrame,
 })
 
--- Sidebar right edge separator
+-- Sidebar right edge line
 new("Frame", {
     Size = UDim2.new(0, 1, 1, 0),
     Position = UDim2.new(1, 0, 0, 0),
@@ -363,7 +335,6 @@ new("Frame", {
     Parent = Sidebar,
 })
 
--- Tab Buttons
 local TabContainer = new("Frame", {
     Size = UDim2.new(1, 0, 0, 100),
     Position = UDim2.new(0, 0, 0, 14),
@@ -371,12 +342,12 @@ local TabContainer = new("Frame", {
     Parent = Sidebar,
 })
 
-local TabPadding = new("UIPadding", {
+new("UIPadding", {
     PaddingLeft = UDim.new(0, 8),
     PaddingRight = UDim.new(0, 8),
 }, TabContainer)
 
-local TabLayout = new("UIListLayout", {
+new("UIListLayout", {
     SortOrder = Enum.SortOrder.LayoutOrder,
     Padding = UDim.new(0, 6),
 }, TabContainer)
@@ -405,7 +376,6 @@ local function createTabButton(name, label, order)
     })
     new("UICorner", { CornerRadius = UDim.new(0, 8) }, btn)
 
-    -- Active left accent bar (hidden by default)
     local accent = new("Frame", {
         Name = "Accent",
         Size = UDim2.new(0, 3, 0.7, 0),
@@ -421,7 +391,6 @@ local function createTabButton(name, label, order)
 
     btn.MouseButton1Click:Connect(function()
         activeTab = name
-        -- Update all tabs visually
         for tName, tData in pairs(tabButtons) do
             if tName == name then
                 tData.accent.Visible = true
@@ -437,14 +406,11 @@ local function createTabButton(name, label, order)
                 }):Play()
             end
         end
-        -- Switch content frames
         for fName, fData in pairs(tabFrames) do
             if fName == name then
                 fData.Visible = true
-                fData.BackgroundTransparency = 0
             else
                 fData.Visible = false
-                fData.BackgroundTransparency = 1
             end
         end
     end)
@@ -457,13 +423,11 @@ createTabButton("credits", "Credits", 2)
 
 -- Activate default tab
 tabButtons["main"].accent.Visible = true
-TweenService:Create(tabButtons["main"].button, TweenInfo.new(0), {
-    BackgroundColor3 = C.TAB_ACTIVE_BG,
-    TextColor3 = C.TEXT_WHITE,
-}):Play()
+tabButtons["main"].button.BackgroundColor3 = C.TAB_ACTIVE_BG
+tabButtons["main"].button.TextColor3 = C.TEXT_WHITE
 
 -- ============================================================================
---  CONTENT AREA (shared container)
+--  CONTENT AREA
 -- ============================================================================
 local ContentArea = new("Frame", {
     Name = "ContentArea",
@@ -474,7 +438,7 @@ local ContentArea = new("Frame", {
     Parent = MainFrame,
 })
 
-local ContentPadding = new("UIPadding", {
+new("UIPadding", {
     PaddingLeft = UDim.new(0, 14),
     PaddingRight = UDim.new(0, 14),
     PaddingTop = UDim.new(0, 10),
@@ -491,35 +455,17 @@ local MainContent = new("ScrollingFrame", {
     BorderSizePixel = 0,
     ScrollBarThickness = 3,
     ScrollBarImageColor3 = C.ACCENT,
-    ScrollBarImageTransparency = 0.5,
     CanvasSize = UDim2.new(0, 0, 0, 0),
-    AutomaticCanvasSize = Enum.AutomaticSize.Y,
     Parent = ContentArea,
 })
 tabFrames["main"] = MainContent
 
-local MainLayout = new("UIListLayout", {
+new("UIListLayout", {
     SortOrder = Enum.SortOrder.LayoutOrder,
     Padding = UDim.new(0, 10),
 }, MainContent)
 
--- Section label helper
-local function createSectionLabel(text, order)
-    local lbl = new("TextLabel", {
-        Size = UDim2.new(1, 0, 0, 20),
-        BackgroundTransparency = 1,
-        Text = text:upper(),
-        TextColor3 = C.TEXT_MUTED,
-        Font = Enum.Font.GothamBold,
-        TextSize = 10,
-        TextXAlignment = Enum.TextXAlignment.Left,
-        LayoutOrder = order,
-        Parent = MainContent,
-    })
-    return lbl
-end
-
--- Toggle card helper
+-- Toggle card builder
 local function createToggleCard(name, label, iconText, order, onToggle)
     local card = new("TextButton", {
         Name = name,
@@ -536,7 +482,6 @@ local function createToggleCard(name, label, iconText, order, onToggle)
         Thickness = 0.5,
         Color = C.BORDER,
         Transparency = 0.3,
-        ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
     }, card)
 
     -- Icon circle
@@ -585,7 +530,7 @@ local function createToggleCard(name, label, iconText, order, onToggle)
         Parent = card,
     })
 
-    -- Toggle pill (status)
+    -- Toggle pill
     local pill = new("Frame", {
         Name = "Pill",
         Size = UDim2.new(0, 44, 0, 22),
@@ -606,7 +551,7 @@ local function createToggleCard(name, label, iconText, order, onToggle)
         Parent = pill,
     })
 
-    -- Toggle knob (circle inside pill)
+    -- Toggle knob
     local knob = new("Frame", {
         Name = "Knob",
         Size = UDim2.new(0, 18, 0, 18),
@@ -626,11 +571,9 @@ local function createToggleCard(name, label, iconText, order, onToggle)
     end)
 
     local state = false
-
     card.MouseButton1Click:Connect(function()
         state = not state
         onToggle(state)
-
         if state then
             TweenService:Create(pill, FAST_TWEEN, { BackgroundColor3 = C.GREEN }):Play()
             TweenService:Create(knob, FAST_TWEEN, { Position = UDim2.new(0, 24, 0.5, -9) }):Play()
@@ -647,13 +590,77 @@ local function createToggleCard(name, label, iconText, order, onToggle)
     return { card = card, pill = pill, pillLabel = pillLabel, knob = knob, iconCircle = iconCircle }
 end
 
-createSectionLabel("Automation", 1)
-local clickCard = createToggleCard("ClickToggle", "Autofarm Clicker", "⬆", 2, function(state)
+-- Section label
+local sectionLabel = new("TextLabel", {
+    Size = UDim2.new(1, 0, 0, 20),
+    BackgroundTransparency = 1,
+    Text = "AUTOMATION",
+    TextColor3 = C.TEXT_MUTED,
+    Font = Enum.Font.GothamBold,
+    TextSize = 10,
+    TextXAlignment = Enum.TextXAlignment.Left,
+    LayoutOrder = 1,
+    Parent = MainContent,
+})
+
+-- ============================================================================
+--  EXECUTION ENGINES (defined before toggle callbacks reference them)
+-- ============================================================================
+
+local function startAutofarm()
+    task.spawn(function()
+        local connection
+        connection = RunService.Heartbeat:Connect(function()
+            if not _G.AutofarmEnabled then
+                if connection then connection:Disconnect() end
+                return
+            end
+            if ClickRemote then
+                if ClickRemote:IsA("RemoteEvent") then
+                    for i = 1, 5 do ClickRemote:FireServer() end
+                elseif ClickRemote:IsA("RemoteFunction") then
+                    for i = 1, 5 do
+                        task.spawn(function() ClickRemote:InvokeServer() end)
+                    end
+                end
+            else
+                warn("[NEXUS] Click Remote missing.")
+                if connection then connection:Disconnect() end
+            end
+        end)
+    end)
+end
+
+local function startAutoSpin()
+    task.spawn(function()
+        local connection
+        connection = RunService.Heartbeat:Connect(function()
+            if not _G.AutoSpinEnabled then
+                if connection then connection:Disconnect() end
+                return
+            end
+            if SpinRemote then
+                if SpinRemote:IsA("RemoteEvent") then
+                    SpinRemote:FireServer()
+                elseif SpinRemote:IsA("RemoteFunction") then
+                    task.spawn(function() SpinRemote:InvokeServer() end)
+                end
+            else
+                warn("[NEXUS] Spin Remote missing.")
+                if connection then connection:Disconnect() end
+            end
+            task.wait(0.05)
+        end)
+    end)
+end
+
+-- Create toggle cards (after engines are defined)
+createToggleCard("ClickToggle", "Autofarm Clicker", "A", 2, function(state)
     _G.AutofarmEnabled = state
     if state then startAutofarm() end
 end)
 
-local spinCard = createToggleCard("SpinToggle", "Auto Spin Wheel", "↻", 3, function(state)
+createToggleCard("SpinToggle", "Auto Spin Wheel", "S", 3, function(state)
     _G.AutoSpinEnabled = state
     if state then startAutoSpin() end
 end)
@@ -670,7 +677,7 @@ local CreditsContent = new("Frame", {
 })
 tabFrames["credits"] = CreditsContent
 
--- Decorative top accent
+-- Decorative accent line
 local CreditsAccent = new("Frame", {
     Size = UDim2.new(0, 50, 0, 3),
     Position = UDim2.new(0.5, -25, 0, 20),
@@ -680,7 +687,7 @@ local CreditsAccent = new("Frame", {
 })
 new("UICorner", { CornerRadius = UDim.new(0, 2) }, CreditsAccent)
 
--- Avatar placeholder circle
+-- Avatar circle
 local AvatarFrame = new("Frame", {
     Size = UDim2.new(0, 64, 0, 64),
     Position = UDim2.new(0.5, -32, 0, 45),
@@ -689,13 +696,8 @@ local AvatarFrame = new("Frame", {
     Parent = CreditsContent,
 })
 new("UICorner", { CornerRadius = UDim.new(1, 0) }, AvatarFrame)
-new("UIStroke", {
-    Thickness = 2,
-    Color = C.ACCENT,
-    ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
-}, AvatarFrame)
+new("UIStroke", { Thickness = 2, Color = C.ACCENT }, AvatarFrame)
 
--- Initials "M" in avatar
 new("TextLabel", {
     Size = UDim2.new(1, 0, 1, 0),
     BackgroundTransparency = 1,
@@ -730,7 +732,7 @@ new("TextLabel", {
     Parent = CreditsContent,
 })
 
--- Version tag
+-- Version
 new("TextLabel", {
     Size = UDim2.new(1, 0, 0, 16),
     Position = UDim2.new(0, 0, 0, 180),
@@ -800,20 +802,16 @@ local function closeUI()
     isUIOpen = false
     savedPosition = MainFrame.Position
 
-    -- Save toggle position relative to where the main frame was
     ToggleBtn.Position = UDim2.new(
         savedPosition.X.Scale, savedPosition.X.Offset + MainFrame.Size.X.Offset / 2 - 24,
         savedPosition.Y.Scale, savedPosition.Y.Offset + 24
     )
 
-    -- Animate main frame out: shrink + fade
-    local tweenOut = TweenService:Create(MainFrame, CLOSE_TWEEN, {
+    TweenService:Create(MainFrame, CLOSE_TWEEN, {
         Size = UDim2.new(0, 0, 0, 0),
         BackgroundTransparency = 1,
-    })
-    tweenOut:Play()
+    }):Play()
 
-    -- Show toggle button with a pop
     ToggleBtn.Visible = true
     ToggleBtn.Size = UDim2.new(0, 0, 0, 0)
     TweenService:Create(ToggleBtn, TOGGLE_POP, { Size = UDim2.new(0, 48, 0, 48) }):Play()
@@ -823,11 +821,9 @@ local function openUI()
     if isUIOpen then return end
     isUIOpen = true
 
-    -- Hide toggle button
     TweenService:Create(ToggleBtn, FAST_TWEEN, { Size = UDim2.new(0, 0, 0, 0) }):Play()
     task.delay(0.2, function() ToggleBtn.Visible = false end)
 
-    -- Restore main frame from center of toggle button position
     MainFrame.Size = UDim2.new(0, 0, 0, 0)
     MainFrame.BackgroundTransparency = 1
     MainFrame.Position = UDim2.new(
@@ -835,7 +831,6 @@ local function openUI()
         ToggleBtn.Position.Y.Scale, ToggleBtn.Position.Y.Offset - 155
     )
 
-    -- Animate main frame in: expand + fade in
     TweenService:Create(MainFrame, OPEN_TWEEN, {
         Size = UDim2.new(0, 440, 0, 310),
         BackgroundTransparency = 0,
@@ -845,57 +840,4 @@ end
 CloseBtn.MouseButton1Click:Connect(closeUI)
 ToggleBtn.MouseButton1Click:Connect(openUI)
 
--- ============================================================================
---  HIGH-SPEED CORE EXECUTION ENGINES
--- ============================================================================
-
--- 1. Universal Fast Autofarm Loop (Clicker)
-local function startAutofarm()
-    task.spawn(function()
-        local connection
-        connection = RunService.Heartbeat:Connect(function()
-            if not _G.AutofarmEnabled then
-                if connection then connection:Disconnect() end
-                return
-            end
-
-            if ClickRemote then
-                if ClickRemote:IsA("RemoteEvent") then
-                    for i = 1, 5 do ClickRemote:FireServer() end
-                elseif ClickRemote:IsA("RemoteFunction") then
-                    for i = 1, 5 do
-                        task.spawn(function() ClickRemote:InvokeServer() end)
-                    end
-                end
-            else
-                warn("[NEXUS] Click Remote Target missing.")
-                if connection then connection:Disconnect() end
-            end
-        end)
-    end)
-end
-
--- 2. Fast Auto Wheel Spin Loop (Wheel)
-local function startAutoSpin()
-    task.spawn(function()
-        local connection
-        connection = RunService.Heartbeat:Connect(function()
-            if not _G.AutoSpinEnabled then
-                if connection then connection:Disconnect() end
-                return
-            end
-
-            if SpinRemote then
-                if SpinRemote:IsA("RemoteEvent") then
-                    SpinRemote:FireServer()
-                elseif SpinRemote:IsA("RemoteFunction") then
-                    task.spawn(function() SpinRemote:InvokeServer() end)
-                end
-            else
-                warn("[NEXUS] Spin Remote Target missing.")
-                if connection then connection:Disconnect() end
-            end
-            task.wait(0.05)
-        end)
-    end)
-end
+end)
