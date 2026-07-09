@@ -700,11 +700,10 @@ new("TextLabel", {
     Size = UDim2.new(1, 0, 0, 18),
     Position = UDim2.new(0, 0, 0, 125),
     BackgroundTransparency = 1,
-    Text = "MADE BY",
+    Text = "M A D E  B Y",
     TextColor3 = C.TEXT_MUTED,
     Font = Enum.Font.GothamMedium,
     TextSize = 10,
-    LetterSpacing = 3,
     Parent = CreditsContent,
 })
 
