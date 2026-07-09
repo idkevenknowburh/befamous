@@ -84,9 +84,7 @@ print("[4/20] Colors & tweens defined")
 local function new(class, props, parent)
     local inst = Instance.new(class)
     for k, v in pairs(props or {}) do
-        if k ~= "Parent" then
-            pcall(function() inst[k] = v end)
-        end
+        pcall(function() inst[k] = v end)
     end
     if parent then inst.Parent = parent end
     return inst
