@@ -434,7 +434,7 @@ local function startAutofarm()
                         clickCount = clickCount + 1
                     else
                         print("[BEFAMOUS] ClickRemote is NEITHER RemoteEvent nor RemoteFunction! Class:", ClickRemote.ClassName)
-                        break
+                        _G.AutofarmEnabled = false
                     end
                 end)
                 if not ok then
@@ -442,7 +442,7 @@ local function startAutofarm()
                 end
             else
                 print("[BEFAMOUS] ClickRemote is NIL -- cannot farm")
-                break
+                _G.AutofarmEnabled = false
             end
             task.wait(0.1)
         end
@@ -462,8 +462,8 @@ local function startAutoSpin()
                     end
                 end)
             else
-                warn("[NEXUS] Spin Remote not found -- cannot spin.")
-                break
+                warn("[BEFAMOUS] Spin Remote not found -- cannot spin.")
+                _G.AutoSpinEnabled = false
             end
             task.wait(1) -- 1 spin/sec
         end
