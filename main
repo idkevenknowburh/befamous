@@ -73,6 +73,10 @@ if RemotesFolder then
     end
 end
 
+print("[NEXUS] Click remote:", ClickRemote and ClickRemote.Name or "NOT FOUND")
+print("[NEXUS] Spin remote:", SpinRemote and SpinRemote.Name or "NOT FOUND")
+print("[NEXUS] Phone equip remote:", PhoneEquipRemote and PhoneEquipRemote.Name or "NOT FOUND")
+
 -- ============================================================================
 --  FOLLOWER COUNTER READER
 -- ============================================================================
@@ -128,59 +132,8 @@ local lastEquippedPhone = ""
 
 local function equipBestPhone()
     if not PhoneEquipRemote then return end
-
     pcall(function()
-        -- Read the PhonesController's DataCache to find owned phones & equipped
-        local controller = ReplicatedStorage:FindFirstChild("Controllers")
-            and ReplicatedStorage.Controllers:FindFirstChild("PhonesController")
-        if not controller then return end
-
-        local required = require(controller)
-        local dataCache = nil
-
-        -- Try to access DataCache from the module's upvalues
-        -- Fallback: just read the player's equipped phone from the HUD
-        -- and try equipping the next one up
-
-        -- Method: scan for the highest phone ID the player owns
-        -- by checking the Update event or using the data path
-        local ok, equippedResult = pcall(function()
-            return game:GetChildren()[17]:GetChildren()[1]:GetChildren()[2]:GetChildren()[15]
-                :GetChildren()[1]:GetChildren()[4]:GetChildren()[11]:GetChildren()[2]
-                :GetChildren()[3]:GetChildren()[1]:GetChildren()[2]
-        end)
-
-        -- Simpler approach: try to get the Phones table from cached data
-        -- and find the max ID, then equip it
-        local playerData = nil
-        if required and required.DataCache then
-            playerData = required.DataCache[LocalPlayer]
-        end
-        if playerData and playerData.Data then
-            local data = playerData.Data
-            local phones = data.Phones
-            local equipped = data.EquippedPhone or ""
-
-            if phones and type(phones) == "table" then
-                -- Find highest phone ID
-                local bestPhone = ""
-                for _, phoneId in ipairs(phones) do
-                    if phoneId ~= "" then
-                        local numId = tonumber(phoneId) or 0
-                        local numBest = tonumber(bestPhone) or 0
-                        if numId > numBest then
-                            bestPhone = phoneId
-                        end
-                    end
-                end
-
-                -- If we found a better phone than what's equipped, equip it
-                if bestPhone ~= "" and bestPhone ~= equipped and bestPhone ~= lastEquippedPhone then
-                    PhoneEquipRemote:FireServer(bestPhone)
-                    lastEquippedPhone = bestPhone
-                end
-            end
-        end
+        PhoneEquipRemote:FireServer()
     end)
 end
 
@@ -189,7 +142,7 @@ if PhoneUpdateEvent and PhoneUpdateEvent:IsA("RemoteEvent") then
     pcall(function()
         PhoneUpdateEvent.OnClientEvent:Connect(function(newPhoneId)
             if _G.AutofarmEnabled and PhoneEquipRemote and newPhoneId then
-                task.wait(0.5) -- small delay to let server process
+                task.wait(0.5)
                 PhoneEquipRemote:FireServer(tostring(newPhoneId))
                 lastEquippedPhone = tostring(newPhoneId)
             end
@@ -647,59 +600,41 @@ new("Frame", {
 -- ============================================================================
 local function startAutofarm()
     task.spawn(function()
-        local connection
-        local phoneCheckTimer = 0
-
-        connection = RunService.Heartbeat:Connect(function(dt)
-            if not _G.AutofarmEnabled then
-                if connection then connection:Disconnect() end
-                return
-            end
-
-            -- Core click loop
+        while _G.AutofarmEnabled do
             if ClickRemote then
-                if ClickRemote:IsA("RemoteEvent") then
-                    for i = 1, 5 do ClickRemote:FireServer() end
-                elseif ClickRemote:IsA("RemoteFunction") then
-                    for i = 1, 5 do
+                pcall(function()
+                    if ClickRemote:IsA("RemoteEvent") then
+                        ClickRemote:FireServer()
+                    elseif ClickRemote:IsA("RemoteFunction") then
                         task.spawn(function() ClickRemote:InvokeServer() end)
                     end
-                end
+                end)
             else
-                warn("[NEXUS] Click Remote missing.")
-                if connection then connection:Disconnect() end
+                warn("[NEXUS] Click Remote not found — cannot farm.")
+                break
             end
-
-            -- Auto phone upgrade check every 3 seconds
-            phoneCheckTimer = phoneCheckTimer + dt
-            if phoneCheckTimer >= 3 then
-                phoneCheckTimer = 0
-                equipBestPhone()
-            end
-        end)
+            task.wait(0.1) -- 10 clicks/sec, server won't rate-limit this
+        end
     end)
 end
 
 local function startAutoSpin()
     task.spawn(function()
-        local connection
-        connection = RunService.Heartbeat:Connect(function()
-            if not _G.AutoSpinEnabled then
-                if connection then connection:Disconnect() end
-                return
-            end
+        while _G.AutoSpinEnabled do
             if SpinRemote then
-                if SpinRemote:IsA("RemoteEvent") then
-                    SpinRemote:FireServer()
-                elseif SpinRemote:IsA("RemoteFunction") then
-                    task.spawn(function() SpinRemote:InvokeServer() end)
-                end
+                pcall(function()
+                    if SpinRemote:IsA("RemoteEvent") then
+                        SpinRemote:FireServer()
+                    elseif SpinRemote:IsA("RemoteFunction") then
+                        task.spawn(function() SpinRemote:InvokeServer() end)
+                    end
+                end)
             else
-                warn("[NEXUS] Spin Remote missing.")
-                if connection then connection:Disconnect() end
+                warn("[NEXUS] Spin Remote not found — cannot spin.")
+                break
             end
-            task.wait(0.05)
-        end)
+            task.wait(1) -- 1 spin/sec
+        end
     end)
 end
 
@@ -727,19 +662,16 @@ task.spawn(function()
             FollowersLabel.Text = formatNumber(followers)
         end
 
-        -- Update current phone from data cache
+        -- Update phone label from leaderstats if available
         pcall(function()
-            local controller = ReplicatedStorage.Controllers.PhonesController
-            if controller then
-                local mod = require(controller)
-                if mod and mod.DataCache then
-                    local pdata = mod.DataCache[LocalPlayer]
-                    if pdata and pdata.Data then
-                        local equipped = pdata.Data.EquippedPhone or ""
-                        if equipped ~= "" then
-                            PhoneLabel.Text = "Phone #" .. equipped
-                            lastEquippedPhone = equipped
-                        end
+            local ls = LocalPlayer:FindFirstChild("leaderstats")
+            if ls then
+                local phone = ls:FindFirstChild("EquippedPhone") or ls:FindFirstChild("Phone")
+                if phone then
+                    local v = phone.Value
+                    if v and v ~= "" then
+                        PhoneLabel.Text = "Phone #" .. tostring(v)
+                        lastEquippedPhone = tostring(v)
                     end
                 end
             end
