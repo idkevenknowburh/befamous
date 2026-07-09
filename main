@@ -1,5 +1,5 @@
 -- ============================================================================
---  Be Famous Script — Smart Autoclicker + Auto Spin
+--  Be Famous Script -- Smart Autoclicker + Auto Spin
 --  Credits: madeonice
 -- ============================================================================
 
@@ -12,7 +12,7 @@ local TweenService = game:GetService("TweenService")
 local LocalPlayer = Players.LocalPlayer
 
 -- ============================================================================
---  DUPLICATE PREVENTION — destroy old GUI if re-executed
+--  DUPLICATE PREVENTION -- destroy old GUI if re-executed
 -- ============================================================================
 local CoreGui = game:GetService("CoreGui")
 local oldGui = CoreGui:FindFirstChild("NexusMetricsUI")
@@ -67,7 +67,7 @@ local FAST_TWEEN  = TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirect
 local TOGGLE_POP  = TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
 
 -- ============================================================================
---  COLOR PALETTE — Flat Dark Mode
+--  COLOR PALETTE -- Flat Dark Mode
 -- ============================================================================
 local C = {
     BG_MAIN       = Color3.fromRGB(18, 18, 18),
@@ -403,7 +403,7 @@ new("UIListLayout", {
     Padding = UDim.new(0, 10),
 }, MainContent)
 
--- (stats section removed — clean layout)
+-- (stats section removed -- clean layout)
 
 -- ============================================================================
 --  EXECUTION ENGINES
@@ -419,7 +419,7 @@ local function startAutofarm()
                 local ok, err = pcall(function()
                     -- Print remote info only first 3 clicks, then every 20th
                     if clickCount < 3 or clickCount % 20 == 0 then
-                        print("[BEFAMOUS] ClickRemote — Class:", ClickRemote.ClassName, "| Name:", ClickRemote.Name, "| Parent:", ClickRemote.Parent and ClickRemote.Parent.Name or "nil", "| click #", clickCount)
+                        print("[BEFAMOUS] ClickRemote -- Class:", ClickRemote.ClassName, "| Name:", ClickRemote.Name, "| Parent:", ClickRemote.Parent and ClickRemote.Parent.Name or "nil", "| click #", clickCount)
                     end
                     if ClickRemote:IsA("RemoteEvent") then
                         ClickRemote:FireServer()
@@ -428,7 +428,7 @@ local function startAutofarm()
                         task.spawn(function()
                             local ok2, ret = pcall(function() return ClickRemote:InvokeServer() end)
                             if not ok2 or clickCount < 5 then
-                                print("[BEFAMOUS] InvokeServer — ok:", ok2, "| return:", tostring(ret))
+                                print("[BEFAMOUS] InvokeServer -- ok:", ok2, "| return:", tostring(ret))
                             end
                         end)
                         clickCount = clickCount + 1
@@ -441,7 +441,7 @@ local function startAutofarm()
                     print("[BEFAMOUS] !!! FIRE ERROR:", err)
                 end
             else
-                print("[BEFAMOUS] ClickRemote is NIL — cannot farm")
+                print("[BEFAMOUS] ClickRemote is NIL -- cannot farm")
                 break
             end
             task.wait(0.1)
@@ -462,7 +462,7 @@ local function startAutoSpin()
                     end
                 end)
             else
-                warn("[NEXUS] Spin Remote not found — cannot spin.")
+                warn("[NEXUS] Spin Remote not found -- cannot spin.")
                 break
             end
             task.wait(1) -- 1 spin/sec
@@ -569,7 +569,7 @@ new("TextLabel", {
 
 -- Toggle cards
 createToggleCard("ClickToggle", "Smart Autoclicker", "Automatically clicks for you", 2, function(state)
-    print("[BEFAMOUS] Toggle clicked — state:", state)
+    print("[BEFAMOUS] Toggle clicked -- state:", state)
     _G.AutofarmEnabled = state
     print("[BEFAMOUS] _G.AutofarmEnabled set to:", _G.AutofarmEnabled)
     if state then
