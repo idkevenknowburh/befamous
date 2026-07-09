@@ -32,23 +32,22 @@ local SpinRemote = nil
 
 if RemotesFolder then
     local children = RemotesFolder:GetChildren()
-
-    -- Find Click remote
-    ClickRemote = children[2]
-    if not ClickRemote or (ClickRemote.Name ~= "Click" and #children >= 2) then
-        for _, child in ipairs(children) do
-            if child.Name == "Click" then ClickRemote = child break end
-        end
+    print("[BEFAMOUS] Total remotes:", #children)
+    for i, child in ipairs(children) do
+        print("[BEFAMOUS]   [" .. i .. "] " .. child.ClassName .. " \"" .. child.Name .. "\"")
     end
 
-    -- Find Spin remote
-    SpinRemote = children[58]
-    if not SpinRemote or (SpinRemote.Name ~= "Spin" and #children >= 58) then
-        for _, child in ipairs(children) do
-            if child.Name == "Spin" then SpinRemote = child break end
-        end
+    -- Find Click remote by name
+    for _, child in ipairs(children) do
+        if child.Name == "Click" then ClickRemote = child break end
     end
 
+    -- Find Spin remote by name
+    for _, child in ipairs(children) do
+        if child.Name == "Spin" then SpinRemote = child break end
+    end
+else
+    print("[BEFAMOUS] RemotesFolder NOT FOUND at ReplicatedStorage.Utilities.Network.Remotes")
 end
 
 print("[BEFAMOUS] Click remote:", ClickRemote and ClickRemote.Name or "NOT FOUND")
