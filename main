@@ -95,15 +95,24 @@ local ScreenGui = new("ScreenGui", {
     DisplayOrder = 999,
 })
 
--- Always parent to PlayerGui for reliable rendering via loadstring
-ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
-ScreenGui.Enabled = true
-ScreenGui.IgnoreGuiInset = true
+-- Try multiple parents in order of reliability via loadstring
+local guiParent = nil
 
--- Optional: protect if exploit supports it
-if syn and syn.protect_gui then
-    pcall(function() syn.protect_gui(ScreenGui) end)
+local ok1 = pcall(function()
+    local test = Instance.new("ScreenGui")
+    test.Parent = game:GetService("CoreGui")
+    test:Destroy()
+    guiParent = game:GetService("CoreGui")
+end)
+
+if not guiParent then
+    guiParent = LocalPlayer:FindFirstChild("PlayerGui") or LocalPlayer:WaitForChild("PlayerGui")
 end
+
+ScreenGui.Parent = guiParent
+print("[NEXUS] ScreenGui parented to:", ScreenGui.Parent and ScreenGui.Parent:GetFullName() or "NIL")
+print("[NEXUS] ScreenGui children after setup:", #ScreenGui:GetChildren())
+print("[NEXUS] MainFrame exists:", tostring(MainFrame ~= nil))
 
 -- ============================================================================
 --  MINIMIZE / OPEN TOGGLE BUTTON  (always visible)
