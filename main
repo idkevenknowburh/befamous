@@ -1,5 +1,5 @@
 -- ============================================================================
---  NEXUS METRICS v3 — Clean Dark Minimal Redesign
+--  NEXUS METRICS v4 — Smart Autoclicker + Auto Phone Upgrade
 --  Credits: madeonice
 -- ============================================================================
 
@@ -11,30 +11,150 @@ local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local LocalPlayer = Players.LocalPlayer
 
--- Dynamic Remote Network Locator
+-- ============================================================================
+--  REMOTE LOCATOR
+-- ============================================================================
 local RemotesFolder = ReplicatedStorage:FindFirstChild("Utilities")
     and ReplicatedStorage.Utilities:FindFirstChild("Network")
     and ReplicatedStorage.Utilities.Network:FindFirstChild("Remotes")
 
 local ClickRemote = nil
 local SpinRemote = nil
+local PhoneEquipRemote = nil   -- Remotes[16] — equip phone
+local PhoneUpdateEvent = nil   -- Remotes[15] — server notifies new phone unlock
 
 if RemotesFolder then
     local children = RemotesFolder:GetChildren()
+
+    -- Find Click remote
     ClickRemote = children[2]
-    SpinRemote = children[58]
     if not ClickRemote or (ClickRemote.Name ~= "Click" and #children >= 2) then
         for _, child in ipairs(children) do
             if child.Name == "Click" then ClickRemote = child break end
         end
     end
+
+    -- Find Spin remote
+    SpinRemote = children[58]
     if not SpinRemote or (SpinRemote.Name ~= "Spin" and #children >= 58) then
         for _, child in ipairs(children) do
             if child.Name == "Spin" then SpinRemote = child break end
         end
     end
+
+    -- Find phone remotes by index with name fallback
+    PhoneEquipRemote = children[16]
+    if not PhoneEquipRemote then
+        for _, child in ipairs(children) do
+            if child.Name == "Equip" or child.Name == "EquipPhone" then
+                PhoneEquipRemote = child
+                break
+            end
+        end
+    end
+
+    PhoneUpdateEvent = children[15]
+    if not PhoneUpdateEvent then
+        for _, child in ipairs(children) do
+            if child.Name == "PhoneUpdate" or child.Name == "UpdatePhone" or child.Name == "UnlockPhone" then
+                PhoneUpdateEvent = child
+                break
+            end
+        end
+    end
 end
 
+-- ============================================================================
+--  FOLLOWER COUNTER READER
+-- ============================================================================
+local function getFollowers()
+    local ok, result = pcall(function()
+        return game:GetChildren()[17]:GetChildren()[1]:GetChildren()[4]:GetChildren()[1]
+    end)
+    if ok and result and result.Text then
+        local num = result.Text:gsub("[^%d]", "")
+        return tonumber(num) or 0
+    end
+    return 0
+end
+
+-- ============================================================================
+--  AUTO PHONE UPGRADE LOGIC
+-- ============================================================================
+local lastEquippedPhone = ""
+
+local function equipBestPhone()
+    if not PhoneEquipRemote then return end
+
+    pcall(function()
+        -- Read the PhonesController's DataCache to find owned phones & equipped
+        local controller = ReplicatedStorage:FindFirstChild("Controllers")
+            and ReplicatedStorage.Controllers:FindFirstChild("PhonesController")
+        if not controller then return end
+
+        local required = require(controller)
+        local dataCache = nil
+
+        -- Try to access DataCache from the module's upvalues
+        -- Fallback: just read the player's equipped phone from the HUD
+        -- and try equipping the next one up
+
+        -- Method: scan for the highest phone ID the player owns
+        -- by checking the Update event or using the data path
+        local ok, equippedResult = pcall(function()
+            return game:GetChildren()[17]:GetChildren()[1]:GetChildren()[2]:GetChildren()[15]
+                :GetChildren()[1]:GetChildren()[4]:GetChildren()[11]:GetChildren()[2]
+                :GetChildren()[3]:GetChildren()[1]:GetChildren()[2]
+        end)
+
+        -- Simpler approach: try to get the Phones table from cached data
+        -- and find the max ID, then equip it
+        local playerData = nil
+        if required and required.DataCache then
+            playerData = required.DataCache[LocalPlayer]
+        end
+        if playerData and playerData.Data then
+            local data = playerData.Data
+            local phones = data.Phones
+            local equipped = data.EquippedPhone or ""
+
+            if phones and type(phones) == "table" then
+                -- Find highest phone ID
+                local bestPhone = ""
+                for _, phoneId in ipairs(phones) do
+                    if phoneId ~= "" then
+                        local numId = tonumber(phoneId) or 0
+                        local numBest = tonumber(bestPhone) or 0
+                        if numId > numBest then
+                            bestPhone = phoneId
+                        end
+                    end
+                end
+
+                -- If we found a better phone than what's equipped, equip it
+                if bestPhone ~= "" and bestPhone ~= equipped and bestPhone ~= lastEquippedPhone then
+                    PhoneEquipRemote:FireServer(bestPhone)
+                    lastEquippedPhone = bestPhone
+                end
+            end
+        end
+    end)
+end
+
+-- Listen for server phone unlock notifications
+if PhoneUpdateEvent and PhoneUpdateEvent:IsA("RemoteEvent") then
+    pcall(function()
+        PhoneUpdateEvent.OnClientEvent:Connect(function(newPhoneId)
+            if _G.AutofarmEnabled and PhoneEquipRemote and newPhoneId then
+                task.wait(0.5) -- small delay to let server process
+                PhoneEquipRemote:FireServer(tostring(newPhoneId))
+                lastEquippedPhone = tostring(newPhoneId)
+            end
+        end)
+    end)
+end
+
+-- Global State
 _G.AutofarmEnabled = false
 _G.AutoSpinEnabled = false
 
@@ -56,10 +176,12 @@ local C = {
     BG_TOPBAR     = Color3.fromRGB(20, 20, 20),
     BG_CARD       = Color3.fromRGB(38, 38, 38),
     BG_CARD_HOVER = Color3.fromRGB(48, 48, 48),
+    BG_STAT       = Color3.fromRGB(24, 24, 24),
     BORDER        = Color3.fromRGB(40, 40, 40),
     BORDER_LIGHT  = Color3.fromRGB(50, 50, 50),
     ACCENT        = Color3.fromRGB(76, 175, 80),
     ACCENT_DIM    = Color3.fromRGB(56, 130, 60),
+    ACCENT_BLUE   = Color3.fromRGB(66, 133, 244),
     TEXT_WHITE     = Color3.fromRGB(240, 240, 240),
     TEXT_PRIMARY   = Color3.fromRGB(220, 220, 220),
     TEXT_SECONDARY = Color3.fromRGB(160, 160, 160),
@@ -67,7 +189,6 @@ local C = {
     TOGGLE_OFF    = Color3.fromRGB(60, 60, 60),
     TOGGLE_KNOB   = Color3.fromRGB(255, 255, 255),
     CLOSE_RED     = Color3.fromRGB(200, 60, 60),
-    CLOSE_RED_H   = Color3.fromRGB(230, 80, 80),
     TAB_HOVER     = Color3.fromRGB(35, 35, 35),
     TAB_ACTIVE    = Color3.fromRGB(40, 40, 40),
 }
@@ -96,7 +217,7 @@ ScreenGui.Parent = game:GetService("CoreGui")
 -- ============================================================================
 --  TOGGLE BUTTON (minimized state)
 -- ============================================================================
-local savedPosition = UDim2.new(0.5, -220, 0.5, -160)
+local savedPosition = UDim2.new(0.5, -230, 0.5, -160)
 
 local ToggleBtn = new("TextButton", {
     Name = "OpenToggle",
@@ -113,28 +234,10 @@ local ToggleBtn = new("TextButton", {
 new("UICorner", { CornerRadius = UDim.new(0, 10) }, ToggleBtn)
 new("UIStroke", { Thickness = 1, Color = C.BORDER_LIGHT }, ToggleBtn)
 
--- Minimal three-line hamburger icon
-new("Frame", {
-    Size = UDim2.new(0, 16, 0, 1.5),
-    Position = UDim2.new(0.5, -8, 0.35, 0),
-    BackgroundColor3 = C.TEXT_PRIMARY,
-    BorderSizePixel = 0,
-    Parent = ToggleBtn,
-})
-new("Frame", {
-    Size = UDim2.new(0, 16, 0, 1.5),
-    Position = UDim2.new(0.5, -8, 0.5, -0.75),
-    BackgroundColor3 = C.TEXT_PRIMARY,
-    BorderSizePixel = 0,
-    Parent = ToggleBtn,
-})
-new("Frame", {
-    Size = UDim2.new(0, 16, 0, 1.5),
-    Position = UDim2.new(0.5, -8, 0.65, -1.5),
-    BackgroundColor3 = C.TEXT_PRIMARY,
-    BorderSizePixel = 0,
-    Parent = ToggleBtn,
-})
+-- Hamburger icon
+new("Frame", { Size = UDim2.new(0, 16, 0, 1.5), Position = UDim2.new(0.5, -8, 0.35, 0), BackgroundColor3 = C.TEXT_PRIMARY, BorderSizePixel = 0, Parent = ToggleBtn })
+new("Frame", { Size = UDim2.new(0, 16, 0, 1.5), Position = UDim2.new(0.5, -8, 0.5, -0.75), BackgroundColor3 = C.TEXT_PRIMARY, BorderSizePixel = 0, Parent = ToggleBtn })
+new("Frame", { Size = UDim2.new(0, 16, 0, 1.5), Position = UDim2.new(0.5, -8, 0.65, -1.5), BackgroundColor3 = C.TEXT_PRIMARY, BorderSizePixel = 0, Parent = ToggleBtn })
 
 -- Toggle drag
 local toggleDragging, toggleDragStart, toggleStartPos
@@ -163,8 +266,8 @@ end)
 -- ============================================================================
 local MainFrame = new("Frame", {
     Name = "MainFrame",
-    Size = UDim2.new(0, 460, 0, 300),
-    Position = UDim2.new(0.5, -230, 0.5, -150),
+    Size = UDim2.new(0, 460, 0, 340),
+    Position = UDim2.new(0.5, -230, 0.5, -170),
     BackgroundColor3 = C.BG_MAIN,
     BorderSizePixel = 0,
     ClipsDescendants = true,
@@ -186,7 +289,6 @@ local TopBar = new("Frame", {
     Parent = MainFrame,
 })
 
--- Rounded top corners (clipped)
 local TopBarClip = new("Frame", {
     Size = UDim2.new(1, 0, 1, 0),
     BackgroundColor3 = C.BG_TOPBAR,
@@ -197,7 +299,6 @@ local TopBarClip = new("Frame", {
 })
 new("UICorner", { CornerRadius = UDim.new(0, 8) }, TopBarClip)
 
--- Fill bottom corners
 new("Frame", {
     Size = UDim2.new(1, 0, 0, 8),
     Position = UDim2.new(0, 0, 1, -8),
@@ -207,7 +308,6 @@ new("Frame", {
     Parent = TopBar,
 })
 
--- Bottom border of top bar
 new("Frame", {
     Size = UDim2.new(1, 0, 0, 1),
     Position = UDim2.new(0, 0, 1, -1),
@@ -217,7 +317,6 @@ new("Frame", {
     Parent = TopBar,
 })
 
--- Title
 new("TextLabel", {
     Size = UDim2.new(1, -80, 1, 0),
     Position = UDim2.new(0, 14, 0, 0),
@@ -244,25 +343,8 @@ local CloseBtn = new("TextButton", {
     Parent = TopBar,
 })
 
--- Close X icon
-local CloseX1 = new("Frame", {
-    Size = UDim2.new(0, 10, 0, 1.5),
-    Position = UDim2.new(0.5, -5, 0.5, -0.75),
-    Rotation = 45,
-    BackgroundColor3 = C.TEXT_SECONDARY,
-    BorderSizePixel = 0,
-    ZIndex = 6,
-    Parent = CloseBtn,
-})
-local CloseX2 = new("Frame", {
-    Size = UDim2.new(0, 10, 0, 1.5),
-    Position = UDim2.new(0.5, -5, 0.5, -0.75),
-    Rotation = -45,
-    BackgroundColor3 = C.TEXT_SECONDARY,
-    BorderSizePixel = 0,
-    ZIndex = 6,
-    Parent = CloseBtn,
-})
+local CloseX1 = new("Frame", { Size = UDim2.new(0, 10, 0, 1.5), Position = UDim2.new(0.5, -5, 0.5, -0.75), Rotation = 45, BackgroundColor3 = C.TEXT_SECONDARY, BorderSizePixel = 0, ZIndex = 6, Parent = CloseBtn })
+local CloseX2 = new("Frame", { Size = UDim2.new(0, 10, 0, 1.5), Position = UDim2.new(0.5, -5, 0.5, -0.75), Rotation = -45, BackgroundColor3 = C.TEXT_SECONDARY, BorderSizePixel = 0, ZIndex = 6, Parent = CloseBtn })
 
 CloseBtn.MouseEnter:Connect(function()
     CloseBtn.BackgroundTransparency = 0.5
@@ -286,7 +368,6 @@ local Sidebar = new("Frame", {
     Parent = MainFrame,
 })
 
--- Sidebar right edge
 new("Frame", {
     Size = UDim2.new(0, 1, 1, 0),
     Position = UDim2.new(1, 0, 0, 0),
@@ -330,7 +411,6 @@ local function createTabButton(name, label, order)
     })
     new("UICorner", { CornerRadius = UDim.new(0, 6) }, btn)
 
-    -- Active indicator bar (left side)
     local indicator = new("Frame", {
         Size = UDim2.new(0, 3, 0.6, 0),
         Position = UDim2.new(0, 0, 0.2, 0),
@@ -343,7 +423,6 @@ local function createTabButton(name, label, order)
 
     tabButtons[name] = { button = btn, indicator = indicator }
 
-    -- Hover
     btn.MouseEnter:Connect(function()
         if activeTab ~= name then
             btn.BackgroundTransparency = 0.5
@@ -356,7 +435,6 @@ local function createTabButton(name, label, order)
         end
     end)
 
-    -- Click
     btn.MouseButton1Click:Connect(function()
         activeTab = name
         for tName, tData in pairs(tabButtons) do
@@ -382,7 +460,6 @@ end
 createTabButton("main", "Main", 1)
 createTabButton("credits", "Credits", 2)
 
--- Set default active
 tabButtons["main"].button.BackgroundColor3 = C.TAB_ACTIVE
 tabButtons["main"].button.BackgroundTransparency = 0
 tabButtons["main"].button.TextColor3 = C.TEXT_WHITE
@@ -400,11 +477,10 @@ local ContentArea = new("Frame", {
     Parent = MainFrame,
 })
 
--- Content padding
 new("UIPadding", {
     PaddingLeft = UDim.new(0, 16),
     PaddingRight = UDim.new(0, 16),
-    PaddingTop = UDim.new(0, 14),
+    PaddingTop = UDim2.new(0, 14),
     PaddingBottom = UDim.new(0, 14),
 }, ContentArea)
 
@@ -423,8 +499,104 @@ tabFrames["main"] = MainContent
 
 new("UIListLayout", {
     SortOrder = Enum.SortOrder.LayoutOrder,
-    Padding = UDim.new(0, 12),
+    Padding = UDim.new(0, 10),
 }, MainContent)
+
+-- ============================================================================
+--  STATS DISPLAY (followers + phone info)
+-- ============================================================================
+local StatsFrame = new("Frame", {
+    Size = UDim2.new(1, 0, 0, 48),
+    BackgroundColor3 = C.BG_STAT,
+    BorderSizePixel = 0,
+    LayoutOrder = 1,
+    Parent = MainContent,
+})
+new("UICorner", { CornerRadius = UDim.new(0, 6) }, StatsFrame)
+
+-- Followers stat
+new("TextLabel", {
+    Size = UDim2.new(0, 100, 0, 14),
+    Position = UDim2.new(0, 12, 0, 6),
+    BackgroundTransparency = 1,
+    Text = "FOLLOWERS",
+    TextColor3 = C.TEXT_MUTED,
+    Font = Enum.Font.GothamBold,
+    TextSize = 9,
+    TextXAlignment = Enum.TextXAlignment.Left,
+    Parent = StatsFrame,
+})
+
+local FollowersLabel = new("TextLabel", {
+    Size = UDim2.new(0, 140, 0, 20),
+    Position = UDim2.new(0, 12, 0, 22),
+    BackgroundTransparency = 1,
+    Text = "...",
+    TextColor3 = C.TEXT_WHITE,
+    Font = Enum.Font.GothamBold,
+    TextSize = 14,
+    TextXAlignment = Enum.TextXAlignment.Left,
+    Parent = StatsFrame,
+})
+
+-- Phone stat
+new("TextLabel", {
+    Size = UDim2.new(0, 100, 0, 14),
+    Position = UDim2.new(0.5, 10, 0, 6),
+    BackgroundTransparency = 1,
+    Text = "PHONE",
+    TextColor3 = C.TEXT_MUTED,
+    Font = Enum.Font.GothamBold,
+    TextSize = 9,
+    TextXAlignment = Enum.TextXAlignment.Left,
+    Parent = StatsFrame,
+})
+
+local PhoneLabel = new("TextLabel", {
+    Size = UDim2.new(0, 100, 0, 20),
+    Position = UDim2.new(0.5, 10, 0, 22),
+    BackgroundTransparency = 1,
+    Text = "...",
+    TextColor3 = C.TEXT_WHITE,
+    Font = Enum.Font.GothamBold,
+    TextSize = 14,
+    TextXAlignment = Enum.TextXAlignment.Left,
+    Parent = StatsFrame,
+})
+
+-- Status stat (right side)
+new("TextLabel", {
+    Size = UDim2.new(0, 80, 0, 14),
+    Position = UDim2.new(1, -90, 0, 6),
+    BackgroundTransparency = 1,
+    Text = "STATUS",
+    TextColor3 = C.TEXT_MUTED,
+    Font = Enum.Font.GothamBold,
+    TextSize = 9,
+    TextXAlignment = Enum.TextXAlignment.Left,
+    Parent = StatsFrame,
+})
+
+local StatusLabel = new("TextLabel", {
+    Size = UDim2.new(0, 80, 0, 20),
+    Position = UDim2.new(1, -90, 0, 22),
+    BackgroundTransparency = 1,
+    Text = "IDLE",
+    TextColor3 = C.TEXT_MUTED,
+    Font = Enum.Font.GothamBold,
+    TextSize = 12,
+    TextXAlignment = Enum.TextXAlignment.Left,
+    Parent = StatsFrame,
+})
+
+-- Separator line between stats and toggles
+new("Frame", {
+    Size = UDim2.new(1, 0, 0, 1),
+    BackgroundColor3 = C.BORDER,
+    BorderSizePixel = 0,
+    LayoutOrder = 2,
+    Parent = MainContent,
+})
 
 -- ============================================================================
 --  EXECUTION ENGINES
@@ -432,11 +604,15 @@ new("UIListLayout", {
 local function startAutofarm()
     task.spawn(function()
         local connection
-        connection = RunService.Heartbeat:Connect(function()
+        local phoneCheckTimer = 0
+
+        connection = RunService.Heartbeat:Connect(function(dt)
             if not _G.AutofarmEnabled then
                 if connection then connection:Disconnect() end
                 return
             end
+
+            -- Core click loop
             if ClickRemote then
                 if ClickRemote:IsA("RemoteEvent") then
                     for i = 1, 5 do ClickRemote:FireServer() end
@@ -448,6 +624,13 @@ local function startAutofarm()
             else
                 warn("[NEXUS] Click Remote missing.")
                 if connection then connection:Disconnect() end
+            end
+
+            -- Auto phone upgrade check every 3 seconds
+            phoneCheckTimer = phoneCheckTimer + dt
+            if phoneCheckTimer >= 3 then
+                phoneCheckTimer = 0
+                equipBestPhone()
             end
         end)
     end)
@@ -477,10 +660,65 @@ local function startAutoSpin()
 end
 
 -- ============================================================================
+--  STATS UPDATER
+-- ============================================================================
+local function formatNumber(n)
+    if n >= 1e9 then
+        return string.format("%.1fB", n / 1e9)
+    elseif n >= 1e6 then
+        return string.format("%.1fM", n / 1e6)
+    elseif n >= 1e3 then
+        return string.format("%.1fK", n / 1e3)
+    end
+    return tostring(math.floor(n))
+end
+
+task.spawn(function()
+    while true do
+        task.wait(1)
+
+        -- Update followers
+        local followers = getFollowers()
+        if followers > 0 then
+            FollowersLabel.Text = formatNumber(followers)
+        end
+
+        -- Update current phone from data cache
+        pcall(function()
+            local controller = ReplicatedStorage.Controllers.PhonesController
+            if controller then
+                local mod = require(controller)
+                if mod and mod.DataCache then
+                    local pdata = mod.DataCache[LocalPlayer]
+                    if pdata and pdata.Data then
+                        local equipped = pdata.Data.EquippedPhone or ""
+                        if equipped ~= "" then
+                            PhoneLabel.Text = "Phone #" .. equipped
+                            lastEquippedPhone = equipped
+                        end
+                    end
+                end
+            end
+        end)
+
+        -- Update status
+        if _G.AutofarmEnabled then
+            StatusLabel.Text = "FARMING"
+            StatusLabel.TextColor3 = C.ACCENT
+        elseif _G.AutoSpinEnabled then
+            StatusLabel.Text = "SPINNING"
+            StatusLabel.TextColor3 = C.ACCENT_BLUE
+        else
+            StatusLabel.Text = "IDLE"
+            StatusLabel.TextColor3 = C.TEXT_MUTED
+        end
+    end
+end)
+
+-- ============================================================================
 --  TOGGLE CARD BUILDER
 -- ============================================================================
 local function createToggleCard(name, label, description, order, onToggle)
-    -- Card background
     local card = new("Frame", {
         Size = UDim2.new(1, 0, 0, 54),
         BackgroundColor3 = C.BG_CARD,
@@ -490,7 +728,6 @@ local function createToggleCard(name, label, description, order, onToggle)
     })
     new("UICorner", { CornerRadius = UDim.new(0, 6) }, card)
 
-    -- Card hover
     card.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseMovement then
             TweenService:Create(card, FAST_TWEEN, { BackgroundColor3 = C.BG_CARD_HOVER }):Play()
@@ -502,7 +739,6 @@ local function createToggleCard(name, label, description, order, onToggle)
         end
     end)
 
-    -- Label text
     new("TextLabel", {
         Size = UDim2.new(1, -70, 0, 18),
         Position = UDim2.new(0, 14, 0, 10),
@@ -515,7 +751,6 @@ local function createToggleCard(name, label, description, order, onToggle)
         Parent = card,
     })
 
-    -- Description text
     new("TextLabel", {
         Size = UDim2.new(1, -70, 0, 14),
         Position = UDim2.new(0, 14, 0, 30),
@@ -528,7 +763,6 @@ local function createToggleCard(name, label, description, order, onToggle)
         Parent = card,
     })
 
-    -- Toggle switch track
     local track = new("TextButton", {
         Size = UDim2.new(0, 40, 0, 20),
         Position = UDim2.new(1, -56, 0.5, -10),
@@ -540,7 +774,6 @@ local function createToggleCard(name, label, description, order, onToggle)
     })
     new("UICorner", { CornerRadius = UDim.new(1, 0) }, track)
 
-    -- Toggle knob
     local knob = new("Frame", {
         Size = UDim2.new(0, 16, 0, 16),
         Position = UDim2.new(0, 2, 0.5, -8),
@@ -550,7 +783,6 @@ local function createToggleCard(name, label, description, order, onToggle)
     })
     new("UICorner", { CornerRadius = UDim.new(1, 0) }, knob)
 
-    -- Toggle logic
     local state = false
     track.MouseButton1Click:Connect(function()
         state = not state
@@ -574,17 +806,21 @@ new("TextLabel", {
     Font = Enum.Font.GothamBold,
     TextSize = 10,
     TextXAlignment = Enum.TextXAlignment.Left,
-    LayoutOrder = 1,
+    LayoutOrder = 3,
     Parent = MainContent,
 })
 
--- Toggle cards
-createToggleCard("ClickToggle", "Autofarm Clicker", "Automatically clicks for you", 2, function(state)
+-- Toggle cards (revamped descriptions)
+createToggleCard("ClickToggle", "Smart Autoclicker", "Clicks + auto-equips best phone", 4, function(state)
     _G.AutofarmEnabled = state
-    if state then startAutofarm() end
+    if state then
+        startAutofarm()
+        -- Do an immediate phone check on enable
+        equipBestPhone()
+    end
 end)
 
-createToggleCard("SpinToggle", "Auto Spin Wheel", "Spins the wheel automatically", 3, function(state)
+createToggleCard("SpinToggle", "Auto Spin Wheel", "Spins the wheel automatically", 5, function(state)
     _G.AutoSpinEnabled = state
     if state then startAutoSpin() end
 end)
@@ -600,7 +836,6 @@ local CreditsContent = new("Frame", {
 })
 tabFrames["credits"] = CreditsContent
 
--- Credits layout (centered vertically in the content area)
 local CreditsCenter = new("Frame", {
     Size = UDim2.new(1, 0, 0, 180),
     Position = UDim2.new(0, 0, 0.5, -90),
@@ -608,7 +843,6 @@ local CreditsCenter = new("Frame", {
     Parent = CreditsContent,
 })
 
--- Avatar circle
 local Avatar = new("Frame", {
     Size = UDim2.new(0, 56, 0, 56),
     Position = UDim2.new(0.5, -28, 0, 0),
@@ -628,7 +862,6 @@ new("TextLabel", {
     Parent = Avatar,
 })
 
--- "Made by"
 new("TextLabel", {
     Size = UDim2.new(1, 0, 0, 16),
     Position = UDim2.new(0, 0, 0, 70),
@@ -640,7 +873,6 @@ new("TextLabel", {
     Parent = CreditsCenter,
 })
 
--- Creator name
 new("TextLabel", {
     Size = UDim2.new(1, 0, 0, 28),
     Position = UDim2.new(0, 0, 0, 90),
@@ -652,19 +884,17 @@ new("TextLabel", {
     Parent = CreditsCenter,
 })
 
--- Version
 new("TextLabel", {
     Size = UDim2.new(1, 0, 0, 14),
     Position = UDim2.new(0, 0, 0, 124),
     BackgroundTransparency = 1,
-    Text = "v3.0.0",
+    Text = "v4.0.0",
     TextColor3 = C.TEXT_MUTED,
     Font = Enum.Font.Gotham,
     TextSize = 11,
     Parent = CreditsCenter,
 })
 
--- Tagline
 new("TextLabel", {
     Size = UDim2.new(1, 0, 0, 14),
     Position = UDim2.new(0, 0, 0, 148),
@@ -744,11 +974,11 @@ local function openUI()
     MainFrame.BackgroundTransparency = 1
     MainFrame.Position = UDim2.new(
         ToggleBtn.Position.X.Scale, ToggleBtn.Position.X.Offset + 21 - 230,
-        ToggleBtn.Position.Y.Scale, ToggleBtn.Position.Y.Offset - 150
+        ToggleBtn.Position.Y.Scale, ToggleBtn.Position.Y.Offset - 170
     )
 
     TweenService:Create(MainFrame, OPEN_TWEEN, {
-        Size = UDim2.new(0, 460, 0, 300),
+        Size = UDim2.new(0, 460, 0, 340),
         BackgroundTransparency = 0,
     }):Play()
 end
