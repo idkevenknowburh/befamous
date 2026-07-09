@@ -408,23 +408,45 @@ new("UIListLayout", {
 -- ============================================================================
 --  EXECUTION ENGINES
 -- ============================================================================
+local clickCount = 0
+
 local function startAutofarm()
+    print("[BEFAMOUS] startAutofarm() called")
     task.spawn(function()
+        print("[BEFAMOUS] autofarm thread spawned, _G.AutofarmEnabled =", _G.AutofarmEnabled)
         while _G.AutofarmEnabled do
             if ClickRemote then
-                pcall(function()
+                local ok, err = pcall(function()
+                    -- Print remote info only first 3 clicks, then every 20th
+                    if clickCount < 3 or clickCount % 20 == 0 then
+                        print("[BEFAMOUS] ClickRemote — Class:", ClickRemote.ClassName, "| Name:", ClickRemote.Name, "| Parent:", ClickRemote.Parent and ClickRemote.Parent.Name or "nil", "| click #", clickCount)
+                    end
                     if ClickRemote:IsA("RemoteEvent") then
                         ClickRemote:FireServer()
+                        clickCount = clickCount + 1
                     elseif ClickRemote:IsA("RemoteFunction") then
-                        task.spawn(function() ClickRemote:InvokeServer() end)
+                        task.spawn(function()
+                            local ok2, ret = pcall(function() return ClickRemote:InvokeServer() end)
+                            if not ok2 or clickCount < 5 then
+                                print("[BEFAMOUS] InvokeServer — ok:", ok2, "| return:", tostring(ret))
+                            end
+                        end)
+                        clickCount = clickCount + 1
+                    else
+                        print("[BEFAMOUS] ClickRemote is NEITHER RemoteEvent nor RemoteFunction! Class:", ClickRemote.ClassName)
+                        break
                     end
                 end)
+                if not ok then
+                    print("[BEFAMOUS] !!! FIRE ERROR:", err)
+                end
             else
-                warn("[NEXUS] Click Remote not found — cannot farm.")
+                print("[BEFAMOUS] ClickRemote is NIL — cannot farm")
                 break
             end
-            task.wait(0.1) -- 10 clicks/sec, server won't rate-limit this
+            task.wait(0.1)
         end
+        print("[BEFAMOUS] autofarm loop ENDED. Total clicks fired:", clickCount)
     end)
 end
 
@@ -547,9 +569,16 @@ new("TextLabel", {
 
 -- Toggle cards
 createToggleCard("ClickToggle", "Smart Autoclicker", "Automatically clicks for you", 2, function(state)
+    print("[BEFAMOUS] Toggle clicked — state:", state)
     _G.AutofarmEnabled = state
+    print("[BEFAMOUS] _G.AutofarmEnabled set to:", _G.AutofarmEnabled)
     if state then
+        clickCount = 0
+        print("[BEFAMOUS] About to call startAutofarm()")
         startAutofarm()
+        print("[BEFAMOUS] startAutofarm() returned (loop runs in thread)")
+    else
+        print("[BEFAMOUS] Autofarm disabled by toggle")
     end
 end)
 
